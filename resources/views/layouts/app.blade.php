@@ -15,22 +15,29 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
-            @include('layouts.navigation')
+        <div x-data="{ drawerOpen: false }" class="min-h-screen bg-gray-100 dark:bg-gray-900">
+            <x-navbar />
 
-            <!-- Page Heading -->
-            @isset($header)
-                <header class="bg-white dark:bg-gray-800 shadow">
-                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                        {{ $header }}
-                    </div>
-                </header>
-            @endisset
+            <div :class="drawerOpen ? 'ml-64 transition-all duration-300' : ''" class="relative transition-all">
+                @include('layouts.navigation')
 
-            <!-- Page Content -->
-            <main>
-                {{ $slot }}
-            </main>
+                <!-- overlay that darkens only the main wrapper (navigation/header remain above it) -->
+                <div x-cloak x-show="drawerOpen" @click="drawerOpen = false" class="absolute inset-0 bg-black/30 z-20 pointer-events-auto"></div>
+
+                <!-- Page Heading -->
+                @isset($header)
+                    <header id="pageHeader" class="relative z-50 bg-white dark:bg-gray-800 shadow transition-all duration-300">
+                        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                            {{ $header }}
+                        </div>
+                    </header>
+                @endisset
+
+                <!-- Page Content -->
+                <main>
+                    {{ $slot }}
+                </main>
+            </div>
         </div>
     </body>
 </html>
