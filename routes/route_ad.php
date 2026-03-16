@@ -9,4 +9,3 @@ Route::get('formulaires/{formulaire}', [FormulaireController::class, 'show'])->n
 Route::get('formulaires/{formulaire}/edit', [FormulaireController::class, 'edit'])->name('formulaires.edit');
 Route::put('formulaires/{formulaire}', [FormulaireController::class, 'update'])->name('formulaires.update');
 Route::delete('formulaires/{formulaire}', [FormulaireController::class, 'destroy'])->name('formulaires.destroy');
-    
