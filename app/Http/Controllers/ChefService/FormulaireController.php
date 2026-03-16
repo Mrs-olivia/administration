@@ -23,8 +23,8 @@ class FormulaireController extends Controller
     // Show a specific form
     public function show($id)
     {
-        $form = Formulaire::findOrFail($id);
-        return View('chefService.formulaire.show', compact('form'));
+        $formulaire = Formulaire::findOrFail($id);
+        return View('chefService.formulaire.show', compact('formulaire'));
     }
 
     // Approve a form

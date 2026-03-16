@@ -122,6 +122,11 @@
                                                     </form>
                                                 </li>
                                                 <li>
+                                                    <a href="{{ route('chefService.forms.show', $formulaire) }}"
+                                                        class="block py-2 px-4 text-left
+                                                         hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">voir</a>
+                                                </li>
+                                                <li>
                                                     <form action="{{ route('chefService.forms.cancel', $formulaire) }}" method="POST">
                                                         @csrf
                                                         <button type="submit" class="block w-full text-left py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Annuler</button>
