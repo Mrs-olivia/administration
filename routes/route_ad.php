@@ -3,7 +3,7 @@
 use App\Http\Controllers\FormulaireController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('secretaire', [FormulaireController::class, 'index'])->name('secretaire');
+Route::get('formulaires', [FormulaireController::class, 'index'])->name('secretaire');
 Route::post('formulaires', [FormulaireController::class, 'store'])->name('formulaires.store');
 Route::get('formulaires/{formulaire}', [FormulaireController::class, 'show'])->name('formulaires.show');
 Route::get('formulaires/{formulaire}/edit', [FormulaireController::class, 'edit'])->name('formulaires.edit');
