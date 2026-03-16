@@ -11,8 +11,13 @@ class FormulaireController extends Controller
     // List all pending forms
     public function index()
     {
-        $forms = Formulaire::where('status', 'pending')->get();
-        return View('chefService.formulaire.index', compact('forms'));
+    
+        $formulaires = Formulaire::whereIn('status', [
+            Formulaire::STATUS_EN_ATTENTE,
+            Formulaire::STATUS_TRAITE,
+            Formulaire::STATUS_REJETE
+        ])->latest()->paginate(15);
+        return View('chefService.formulaire.index', compact('formulaires'));
     }
 
     // Show a specific form
@@ -25,20 +30,20 @@ class FormulaireController extends Controller
     // Approve a form
     public function approve($id)
     {
-        $form = Formulaire::findOrFail($id);
-        $form->status = 'approved';
-        $form->save();
-        return View('chefService.formulaire.show', compact('form'))->with('success', 'Form approved successfully');
+        $formulaire = Formulaire::findOrFail($id);
+        $formulaire->status = 2;
+        $formulaire->save();
+        return View('chefService.formulaire.show', compact('formulaire'))->with('success', 'Form approved successfully');
     }
 
     // Cancel a form
     public function cancel($id)
     {
-        $form = Formulaire::findOrFail($id);
-        $form->status = 'canceled';
-        $form->save();
+        $formulaire = Formulaire::findOrFail($id);
+        $formulaire->status = 3;
+        $formulaire->save();
 
-        return View('chefService.formulaire.show', compact('form'))->with('success', 'Form canceled successfully');
+        return View('chefService.formulaire.show', compact('formulaire'))->with('success', 'Form canceled successfully');
     }
 
     // Add a note to a form
@@ -48,10 +53,10 @@ class FormulaireController extends Controller
             'note' => 'required|string'
         ]);
 
-        $form = Formulaire::findOrFail($id);
-        $form->note = $request->note;
-        $form->save();
+        $formulaire = Formulaire::findOrFail($id);
+        $formulaire->note = $request->note;
+        $formulaire->save();
 
-        return View('chefService.formulaire.show', compact('form'))->with('success', 'Note added successfully');
+        return View('chefService.formulaire.show', compact('formulaire'))->with('success', 'Note added successfully');
     }
 }

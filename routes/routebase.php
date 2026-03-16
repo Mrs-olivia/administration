@@ -12,20 +12,22 @@ Route::prefix('admin')->group(function () {
     Route::put('/users/{id}', [UserController::class, 'update'])->name('admin.users.update');     
     Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('admin.users.destroy'); 
 });
-
+Route::get('formulaires/{formulaire}/edit', [FormulaireController::class, 'edit'])->name('formulaires.edit');
 // ------------------ SECRÉTAIRE ------------------
 Route::prefix('secretaire')->group(function () {
     Route::get('/forms', [SecretaireController::class, 'index'])->name('secretaire.forms.index');      
     Route::get('/forms/{id}', [SecretaireController::class, 'show'])->name('secretaire.forms.show');   
-    Route::post('/forms', [SecretaireController::class, 'store'])->name('secretaire.forms.store');      
+    Route::post('/forms', [SecretaireController::class, 'store'])->name('secretaire.forms.store');
+    Route::get('/forms/{formulaire}/edit', [SecretaireController::class, 'edit'])->name('secretaire.forms.edit');       
     Route::put('/forms/{id}', [SecretaireController::class, 'update'])->name('secretaire.forms.update'); 
 });
 
 // ------------------ CHEF DE SERVICE ------------------
 Route::prefix('chefService')->group(function () {
-    Route::get('/forms', [ChefServiceController::class, 'index'])->name('chef.forms.index');          
-    Route::get('/forms/{id}', [ChefServiceController::class, 'show'])->name('chef.forms.show');     
-    Route::post('/forms/{id}/approve', [ChefServiceController::class, 'approve'])->name('chef.forms.approve'); 
-    Route::post('/forms/{id}/cancel', [ChefServiceController::class, 'cancel'])->name('chef.forms.cancel');   
-    Route::post('/forms/{id}/note', [ChefServiceController::class, 'addNote'])->name('chef.forms.note');   
+    Route::get('/forms', [ChefServiceController::class, 'index'])->name('chefService.forms.index');          
+    Route::get('/forms/{id}', [ChefServiceController::class, 'show'])->name('chefService.forms.show');  
+    Route::post('/forms/{formulaire}/edit', [ChefServiceController::class, 'edit'])->name('chefService.forms.edit');     
+    Route::post('/forms/{id}/approve', [ChefServiceController::class, 'approve'])->name('chefService.forms.approve'); 
+    Route::post('/forms/{id}/cancel', [ChefServiceController::class, 'cancel'])->name('chefService.forms.cancel');   
+    Route::post('/forms/{id}/note', [ChefServiceController::class, 'addNote'])->name('chefService.forms.note');   
 });

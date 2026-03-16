@@ -169,20 +169,19 @@
                                             <ul class="py-1 text-sm text-gray-700 dark:text-gray-200"
                                                 aria-labelledby="actions-{{ $formulaire->id }}-button">
                                                 <li>
-                                                    <a href="{{ route('formulaires.show', $formulaire) }}"
+                                                    <a href="{{ route('secretaire.forms.show', $formulaire) }}"
                                                         class="block py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">voir</a>
                                                 </li>
                                                 <li>
-                                                    <a href="{{ route('formulaires.edit', $formulaire) }}"
+                                                    <a href="{{ route('secretaire.forms.edit', $formulaire) }}"
                                                         class="block py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Editer</a>
                                                 </li>
                                                  <li>
-                                                    <a href="{{ route('formulaires.edit', $formulaire) }}"
+                                                    <a href="{{ route('secretaire.forms.edit', $formulaire) }}"
                                                         class="block py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">envoyer</a>
                                                 </li>
                                             </ul>
                                             <div class="py-1">
-                                                <form action="{{ route('formulaires.destroy', $formulaire) }}" method="POST" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce formulaire ?');">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit"

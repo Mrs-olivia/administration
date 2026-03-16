@@ -19,7 +19,8 @@ return new class extends Migration
             // 2. Ajout des colonnes pour le numéro structuré
             $table->string('service_code', 10); // ex: 'DRH'
             $table->integer('annee');           // ex: 2026
-            $table->integer('numero_ordre');    // ex: 42
+            $table->integer('numero_ordre'); 
+            $table->string('note');     // ex: 42
 
             // 3. Ajout de la contrainte d'unicité (le "filet de sécurité")
             $table->unique(['service_code', 'annee', 'numero_ordre'], 'idx_unique_reference');
