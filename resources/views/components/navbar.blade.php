@@ -20,6 +20,9 @@
                <span class="ms-3">Dashboard</span>
             </a>
          </li>
+         @php
+            $isSecretaire = auth()->check() && auth()->user()->role === 'secretaire';
+         @endphp
          <li>
             <button type="button" class="flex items-center w-full justify-between px-2 py-1.5 text-body rounded-base hover:bg-neutral-tertiary hover:text-fg-brand group" aria-controls="dropdown-example" data-collapse-toggle="dropdown-example">
                   <svg class="shrink-0 w-5 h-5 transition duration-75 group-hover:text-fg-brand" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4h1.5L9 16m0 0h8m-8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm-8.5-3h9.25L19 7H7.312"/></svg>
@@ -36,6 +39,21 @@
                   <li>
                      <a href="#" class="pl-10 flex items-center px-2 py-1.5 text-body rounded-base hover:bg-neutral-tertiary hover:text-fg-brand group">Techniques</a>
                   </li>
+                     @if(auth()->check() && auth()->user()->role !== 'admin')
+                        <li>
+                           @if(isSecretaire)
+                           <a href="{{ route('secretaire.forms.index') }}" 
+                              class="pl-10 flex items-center px-2 py-1.5 text-body rounded-base hover:bg-neutral-tertiary hover:text-fg-brand group">
+                              Formulaires
+                           </a>
+                           @else
+                           <a href="{{ route('chefService.forms.index') }}" 
+                              class="pl-10 flex items-center px-2 py-1.5 text-body rounded-base hover:bg-neutral-tertiary hover:text-fg-brand group">
+                              Formulaires
+                           </a>
+                           @endif
+                        </li>
+                     @endif
             </ul>
          </li>
        
@@ -47,10 +65,16 @@
          </li>
  
          <li>
-            <a href="#" class="flex items-center px-2 py-1.5 text-body rounded-base hover:bg-neutral-tertiary hover:text-fg-brand group">
+            <form method="POST" action="{{ route('logout') }}"class="flex items-center px-2 py-1.5 text-body rounded-base hover:bg-neutral-tertiary hover:text-fg-brand group">
+               @csrf
+               <button type="submit" class="flex items-center w-full">
+
                <svg class="shrink-0 w-5 h-5 transition duration-75 group-hover:text-fg-brand" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12H4m12 0-4 4m4-4-4-4m3-4h2a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-2"/></svg>
                <span class="flex-1 ms-3 whitespace-nowrap">Sign In</span>
-            </a>
+               </button>
+            
+               </form>
+           
          </li>
       </ul>
    </div>

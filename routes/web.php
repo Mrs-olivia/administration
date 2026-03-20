@@ -19,6 +19,8 @@ Route::middleware('auth')->group(function () {
 
 require __DIR__.'/auth.php';
 require __DIR__.'/routebase.php';
+require __DIR__.'/role_permission.php';
+
 
 // Include additional admin routes
 require __DIR__.'/route_ad.php';

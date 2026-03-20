@@ -72,7 +72,7 @@
                                 <option value="">-- Choisir un rôle --</option>
                                 <option value="admin">Admin</option>
                                 <option value="secretaire">Secrétaire</option>
-                                <option value="chef">Chef de service</option>
+                                <option value="chefService">Chef de service</option>
                             </select>
                         </div>
                     </div>
