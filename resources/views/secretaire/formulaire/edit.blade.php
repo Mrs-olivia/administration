@@ -4,7 +4,7 @@
             <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
                 Modifier le formulaire
             </h2>
-            <a href="{{ route('formulaires.show', $formulaire) }}" class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition">
+            <a href="{{ route('secretaire.forms.show', $formulaire) }}" class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                 </svg>
@@ -20,7 +20,7 @@
                     <h3 class="text-2xl font-bold text-white">{{ $formulaire->reference }}</h3>
                 </div>
 
-                <form method="POST" action="{{ route('formulaires.update', $formulaire) }}" enctype="multipart/form-data" class="px-6 py-6">
+                <form method="POST" action="{{ route('secretaire.forms.update', $formulaire) }}" enctype="multipart/form-data" class="px-6 py-6">
                     @csrf
                     @method('PUT')
 
@@ -104,8 +104,8 @@
                             </div>
                         </div>
 
-                        <!-- Type document, Fichier, Statut -->
-                        <div class="grid grid-cols-3 gap-4">
+                        <!-- Type document, Fichier -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Type document</label>
                                 <select id="type_document_edit" name="type_document" required class="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2">
@@ -140,25 +140,17 @@
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Statut</label>
-                                <select name="status" class="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2">
-                                    <option value="0" {{ old('status', $formulaire->status) == 0 ? 'selected' : '' }}>En attente</option>
-                                    <option value="1" {{ old('status', $formulaire->status) == 1 ? 'selected' : '' }}>En cours</option>
-                                    <option value="2" {{ old('status', $formulaire->status) == 2 ? 'selected' : '' }}>Traité</option>
-                                    <option value="3" {{ old('status', $formulaire->status) == 3 ? 'selected' : '' }}>Rejeté</option>
-                                    <option value="4" {{ old('status', $formulaire->status) == 4 ? 'selected' : '' }}>Archivé</option>
-                                </select>
-                                @error('status')
-                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                                @enderror
-                            </div>
+                        </div>
+
+                        <div class="rounded-md bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 p-4">
+                            <p class="text-sm text-gray-600 dark:text-gray-300"><span class="font-medium">Statut actuel :</span> {{ $formulaire->statusLabel() }}</p>
+                            <p class="text-xs text-gray-500 mt-1">Le statut est géré par le workflow (chef / archivage). Vous ne pouvez pas le modifier manuellement.</p>
                         </div>
                     </div>
 
                     <!-- Actions -->
                     <div class="mt-8 flex justify-end gap-3">
-                        <a href="{{ route('formulaires.show', $formulaire) }}" class="inline-flex items-center px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition">
+                        <a href="{{ route('secretaire.forms.show', $formulaire) }}" class="inline-flex items-center px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition">
                             Annuler
                         </a>
                         <button type="submit" class="inline-flex items-center px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition">

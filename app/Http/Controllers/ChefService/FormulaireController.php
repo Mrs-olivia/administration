@@ -2,61 +2,137 @@
 
 namespace App\Http\Controllers\ChefService;
 
+use App\Events\DossierMisAJour;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Formulaire;
+use App\Models\User;
+use App\Notifications\DecisionChefSurDossier;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class FormulaireController extends Controller
 {
-    // List all pending forms
-    public function index()
+    public function index(): View
     {
-    
-        $formulaires = Formulaire::whereIn('status', [
-            Formulaire::STATUS_EN_ATTENTE,
-            Formulaire::STATUS_TRAITE,
-            Formulaire::STATUS_REJETE
-        ])->latest()->paginate(15);
-        return View('chefService.formulaire.index', compact('formulaires'));
+        $formulaires = Formulaire::query()
+            ->where('status', '!=', Formulaire::STATUS_ARCHIVE)
+            ->latest()
+            ->paginate(15);
+
+        return view('chefService.formulaire.index', compact('formulaires'));
     }
 
-    // Show a specific form
-    public function show($id)
+    public function show(Formulaire $formulaire): View
     {
-        $formulaire = Formulaire::findOrFail($id);
-        return View('chefService.formulaire.show', compact('formulaire'));
+        $this->authorize('view', $formulaire);
+
+        if ($formulaire->status === Formulaire::STATUS_EN_ATTENTE) {
+            $formulaire->status = Formulaire::STATUS_EN_COURS;
+            $formulaire->save();
+            event(new DossierMisAJour($formulaire->fresh()));
+        }
+
+        return view('chefService.formulaire.show', compact('formulaire'));
     }
 
-    // Approve a form
-    public function approve($id)
+    /**
+     * Annotation optionnelle — même ligne en base (annotation_chef), SSOT.
+     */
+    public function annoter(Request $request, Formulaire $formulaire): RedirectResponse
     {
-        $formulaire = Formulaire::findOrFail($id);
-        $formulaire->status = 2;
-        $formulaire->save();
-        return View('chefService.formulaire.show', compact('formulaire'))->with('success', 'Form approved successfully');
-    }
+        $this->authorize('agirCommeChef', $formulaire);
 
-    // Cancel a form
-    public function cancel($id)
-    {
-        $formulaire = Formulaire::findOrFail($id);
-        $formulaire->status = 3;
-        $formulaire->save();
-
-        return View('chefService.formulaire.show', compact('formulaire'))->with('success', 'Form canceled successfully');
-    }
-
-    // Add a note to a form
-    public function addNote(Request $request, $id)
-    {
         $request->validate([
-            'note' => 'required|string'
+            'annotation' => ['nullable', 'string', 'max:65535'],
         ]);
 
-        $formulaire = Formulaire::findOrFail($id);
-        $formulaire->note = $request->note;
+        $texte = trim((string) $request->input('annotation', ''));
+        if ($texte !== '') {
+            $formulaire->annotation_chef = $texte;
+            $formulaire->save();
+            event(new DossierMisAJour($formulaire->fresh()));
+
+            return redirect()->route('chefService.forms.show', $formulaire)->with('success', 'Annotation enregistrée.');
+        }
+
+        return redirect()->route('chefService.forms.show', $formulaire)->with('info', 'Saisissez un texte pour enregistrer une annotation.');
+    }
+
+    public function valider(Request $request, Formulaire $formulaire): RedirectResponse
+    {
+        $this->authorize('agirCommeChef', $formulaire);
+
+        $hasPrior = $formulaire->hasChefAnnotation();
+
+        $request->validate([
+            'commentaire' => [
+                Rule::requiredIf(! $hasPrior),
+                'nullable',
+                'string',
+                'max:65535',
+            ],
+        ], [
+            'commentaire.required' => 'Un commentaire est obligatoire lorsqu’aucune annotation n’a encore été enregistrée sur ce dossier.',
+        ]);
+
+        $final = trim((string) $request->input('commentaire', ''));
+        if ($final !== '') {
+            $formulaire->annotation_chef = $final;
+        } elseif (! $hasPrior) {
+            return redirect()->back()->withErrors(['commentaire' => 'Veuillez saisir un commentaire.']);
+        }
+
+        $formulaire->status = Formulaire::STATUS_TRAITE;
         $formulaire->save();
 
-        return View('chefService.formulaire.show', compact('formulaire'))->with('success', 'Note added successfully');
+        event(new DossierMisAJour($formulaire->fresh()));
+        $this->notifierSecretaire($formulaire, 'valide');
+
+        return redirect()->route('chefService.forms.show', $formulaire)->with('success', 'Dossier validé. Le secrétariat a été notifié.');
+    }
+
+    public function rejeter(Request $request, Formulaire $formulaire): RedirectResponse
+    {
+        $this->authorize('agirCommeChef', $formulaire);
+
+        $hasPrior = $formulaire->hasChefAnnotation();
+
+        $request->validate([
+            'commentaire' => [
+                Rule::requiredIf(! $hasPrior),
+                'nullable',
+                'string',
+                'max:65535',
+            ],
+        ], [
+            'commentaire.required' => 'Un commentaire (motif) est obligatoire lorsqu’aucune annotation n’a encore été enregistrée.',
+        ]);
+
+        $final = trim((string) $request->input('commentaire', ''));
+        if ($final !== '') {
+            $formulaire->annotation_chef = $final;
+        } elseif (! $hasPrior) {
+            return redirect()->back()->withErrors(['commentaire' => 'Veuillez saisir le motif de rejet.']);
+        }
+
+        $formulaire->status = Formulaire::STATUS_REJETE;
+        $formulaire->save();
+
+        event(new DossierMisAJour($formulaire->fresh()));
+        $this->notifierSecretaire($formulaire, 'rejete');
+
+        return redirect()->route('chefService.forms.show', $formulaire)->with('success', 'Dossier rejeté. Le secrétariat a été notifié.');
+    }
+
+    private function notifierSecretaire(Formulaire $formulaire, string $type): void
+    {
+        if (! $formulaire->created_by_user_id) {
+            return;
+        }
+
+        $auteur = User::find($formulaire->created_by_user_id);
+        $auteur?->notify(new DecisionChefSurDossier($formulaire, $type));
     }
 }

@@ -44,13 +44,5 @@
             </x-primary-button>
             
         </div>
-        @if (Route::has('register'))
-            <p class="mt-4 text-center text-sm">
-                {{ "Pas encore inscrit ?" }}
-                <a href="{{ route('register') }}" class="underline text-blue-600 dark:text-blue-400 hover:text-blue-800">
-                 {{ "S'enregistrer" }}
-            </a>
-            </p>
-         @endif
     </form>
 </x-guest-layout>

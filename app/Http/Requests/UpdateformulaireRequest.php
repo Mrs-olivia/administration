@@ -28,10 +28,11 @@ class UpdateformulaireRequest extends FormRequest
             'expediteur' => ['sometimes','required','string','max:255'],
             'objet' => ['sometimes','required','string','max:1000'],
             'type_document' => ['sometimes','required','string','max:255'],
+            'autre_type_document' => ['nullable', 'string', 'max:255'],
             'date_reception' => ['nullable','date'],
             'date_echeance' => ['nullable','date'],
-            'fichier' => ['nullable','string','max:255'],
-            'status' => ['nullable','integer','min:0','max:4'],
+            'fichier' => ['nullable','file','max:5120'],
+            'status' => ['prohibited'],
         ];
     }
 }

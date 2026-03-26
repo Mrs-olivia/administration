@@ -7,19 +7,24 @@
         <div class="flex p-4 mb-4 text-sm rounded-lg bg-green-100 text-green-700 border border-green-400" id="success-message">
             {{ session('success') }}
         </div>
-
         <script>
-            // Faire disparaître le message de succès après 8 secondes
             setTimeout(function() {
-                document.getElementById('success-message').style.display = 'none';
+                var el = document.getElementById('success-message');
+                if (el) el.style.display = 'none';
             }, 5000);
         </script>
+    @endif
+    @if (session('error'))
+        <div class="flex p-4 mb-4 text-sm rounded-lg bg-red-100 text-red-800 border border-red-400">
+            {{ session('error') }}
+        </div>
     @endif
 
     <section id="pageWrapper" class="bg-gray-50 dark:bg-gray-900 p-3 sm:p-5 transition-all duration-300">
         <div class="mx-auto max-w-screen-xl px-4 lg:px-12">
-            <!-- Start coding here -->
-            <div class="bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-hidden">
+            <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">Les dossiers partagent une <strong>source unique</strong> en base : le statut et le commentaire chef sont les mêmes pour le secrétariat et le chef. Actualisation automatique ci-dessous.</p>
+            <div class="bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-hidden"
+                 x-data="secretaireDossierPollBatch({ pollUrl: '{{ route('secretaire.forms.poll') }}', ids: @json($formulaires->pluck('id')->values()) })">
                 <div
                     class="flex flex-col md:flex-row items-center justify-between space-y-3 md:space-y-0 md:space-x-4 p-4">
                     <div class="w-full md:w-1/2">
@@ -141,112 +146,59 @@
                                         @endif
                                     </td>
                                     <td class="px-4 py-3">
-                                        @if($formulaire->status == 0)
-                                            <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded">En attente</span>
-                                        @elseif($formulaire->status == 1)
-                                            <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">En cours</span>
-                                        @elseif($formulaire->status == 2)
-                                            <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">Traité</span>
-                                        @elseif($formulaire->status == 3)
-                                            <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded">Rejeté</span>
-                                        @else
-                                            <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">Archivé</span>
-                                        @endif
+                                        <span data-secretairepoll-status="{{ $formulaire->id }}"
+                                            class="inline-flex px-2.5 py-0.5 rounded text-xs font-medium
+                                            @if($formulaire->status === \App\Models\Formulaire::STATUS_EN_ATTENTE) bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200
+                                            @elseif($formulaire->status === \App\Models\Formulaire::STATUS_EN_COURS) bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200
+                                            @elseif($formulaire->status === \App\Models\Formulaire::STATUS_TRAITE) bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200
+                                            @elseif($formulaire->status === \App\Models\Formulaire::STATUS_REJETE) bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200
+                                            @else bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-100 @endif">
+                                            {{ $formulaire->statusLabel() }}
+                                        </span>
                                     </td>
-                                    <td class="px-4 py-3 text-right">
-                                        <button id="actions-{{ $formulaire->id }}-button"
-                                            data-dropdown-toggle="actions-{{ $formulaire->id }}-dropdown"
-                                            class="inline-flex items-center p-0.5 text-sm font-medium text-center text-gray-500 hover:text-gray-800 rounded-lg focus:outline-none dark:text-gray-400 dark:hover:text-gray-100"
-                                            type="button">
-                                            <svg class="w-5 h-5" aria-hidden="true" fill="currentColor"
-                                                viewbox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                                <path
-                                                    d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
-                                            </svg>
-                                        </button>
-                                        <div id="actions-{{ $formulaire->id }}-dropdown"
-                                            class="hidden z-10 w-44 bg-white rounded divide-y divide-gray-100 shadow dark:bg-gray-700 dark:divide-gray-600">
-                                            <ul class="py-1 text-sm text-gray-700 dark:text-gray-200"
-                                                aria-labelledby="actions-{{ $formulaire->id }}-button">
-                                                <li>
-                                                    <a href="{{ route('secretaire.forms.show', $formulaire) }}"
-                                                        class="block py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">voir</a>
-                                                </li>
-                                                <li>
-                                                    <a href="{{ route('secretaire.forms.edit', $formulaire) }}"
-                                                        class="block py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Editer</a>
-                                                </li>
-                                                 <li>
-                                                    <a href="{{ route('secretaire.forms.edit', $formulaire) }}"
-                                                        class="block py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">envoyer</a>
-                                                </li>
-                                            </ul>
-                                            <div class="py-1">
+                                    <td class="px-4 py-3">
+                                        <div class="flex flex-wrap gap-1 justify-end max-w-xs ms-auto">
+                                            <a href="{{ route('secretaire.forms.show', $formulaire) }}" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200">Voir</a>
+                                            @can('update', $formulaire)
+                                                <a href="{{ route('secretaire.forms.edit', $formulaire) }}" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800 hover:bg-blue-200">Éditer</a>
+                                            @endcan
+                                            @can('send', $formulaire)
+                                                <form action="{{ route('secretaire.forms.send', $formulaire) }}" method="POST" class="inline" onsubmit="return confirm('Notifier le chef pour ce dossier ?');">
+                                                    @csrf
+                                                    <button type="submit" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-amber-100 text-amber-900 hover:bg-amber-200">Envoyer</button>
+                                                </form>
+                                            @endcan
+                                            @can('delete', $formulaire)
+                                                <form action="{{ route('secretaire.forms.destroy', $formulaire) }}" method="POST" class="inline" onsubmit="return confirm('Supprimer ce dossier ?');">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit"
-                                                        class="block w-full text-left py-2 px-4 text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:text-gray-200 dark:hover:text-white">supprimer</button>
+                                                    <button type="submit" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800 hover:bg-red-200">Supprimer</button>
                                                 </form>
-                                            </div>
+                                            @endcan
+                                            @if($formulaire->canBeArchivedBySecretaire())
+                                                @can('archive', $formulaire)
+                                                    <form action="{{ route('secretaire.forms.archive', $formulaire) }}" method="POST" class="inline" onsubmit="return confirm('Archiver ce dossier ?');">
+                                                        @csrf
+                                                        <button type="submit" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-purple-100 text-purple-800 hover:bg-purple-200">Archiver</button>
+                                                    </form>
+                                                @endcan
+                                            @else
+                                                <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-400 dark:bg-gray-600 dark:text-gray-500 cursor-not-allowed" title="Archivage possible uniquement pour les dossiers traités ou rejetés par le chef">Archiver</span>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-4 py-4 text-center">Aucun formulaire trouvé.</td>
+                                    <td colspan="9" class="px-4 py-4 text-center">Aucun dossier trouvé.</td>
                                 </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
-                <nav class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4"
-                    aria-label="Table navigation">
-                    <span class="text-sm font-normal text-gray-500 dark:text-gray-400">
-                        Showing
-                        <span class="font-semibold text-gray-900 dark:text-white">1-10</span>
-                        of
-                        <span class="font-semibold text-gray-900 dark:text-white">1000</span>
-                    </span>
-                    <ul class="inline-flex items-stretch -space-x-px">
-                        <li>
-                            <a href="#"
-                                class="flex items-center justify-center h-full py-1.5 px-3 ml-0 text-gray-500 bg-white rounded-l-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
-                                <span class="sr-only">Previous</span>
-                                <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewbox="0 0 20 20"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <path fill-rule="evenodd"
-                                        d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                                        clip-rule="evenodd" />
-                                </svg>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#"
-                                class="flex items-center justify-center text-sm py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">1</a>
-                        </li>
-
-                        <li>
-                            <a href="#"
-                                class="flex items-center justify-center text-sm py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">...</a>
-                        </li>
-                        <li>
-                            <a href="#"
-                                class="flex items-center justify-center text-sm py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">100</a>
-                        </li>
-                        <li>
-                            <a href="#"
-                                class="flex items-center justify-center h-full py-1.5 px-3 leading-tight text-gray-500 bg-white rounded-r-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
-                                <span class="sr-only">suivant</span>
-                                <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewbox="0 0 20 20"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <path fill-rule="evenodd"
-                                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                                        clip-rule="evenodd" />
-                                </svg>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
+                <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                    {{ $formulaires->links() }}
+                </div>
             </div>
         </div>
 

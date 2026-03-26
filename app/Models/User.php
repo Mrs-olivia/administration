@@ -6,11 +6,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasRoles; // Ajoute ceci
+    use HasRoles;
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
@@ -47,5 +49,27 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function formulairesCrees(): HasMany
+    {
+        return $this->hasMany(Formulaire::class, 'created_by_user_id');
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(function (User $user): void {
+            if (! $user->role) {
+                return;
+            }
+
+            try {
+                if (Role::where('name', $user->role)->exists()) {
+                    $user->syncRoles([$user->role]);
+                }
+            } catch (\Throwable) {
+                // Tables Spatie non prêtes (ex. migrations en cours)
+            }
+        });
     }
 }

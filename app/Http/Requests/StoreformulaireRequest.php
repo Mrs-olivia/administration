@@ -32,7 +32,7 @@ class StoreformulaireRequest extends FormRequest
             'date_reception' => ['nullable','date'],
             'date_echeance' => ['nullable','date'],
             'fichier' => ['nullable','file','max:5120'],
-            'status' => ['nullable','integer','min:0','max:4'],
+            'status' => ['prohibited'],
         ];
     }
 }

@@ -79,17 +79,8 @@
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Fichier</label>
                         <input name="fichier" type="file" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Statut</label>
-                        <select name="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                            <option value="0" {{ old('status') == '0' ? 'selected' : '' }}>En attente</option>
-                            <option value="1" {{ old('status') == '1' ? 'selected' : '' }}>En cours</option>
-                            <option value="2" {{ old('status') == '2' ? 'selected' : '' }}>Traité</option>
-                            <option value="3" {{ old('status') == '3' ? 'selected' : '' }}>Rejeté</option>
-                            <option value="4" {{ old('status') == '4' ? 'selected' : '' }}>Archivé</option>
-                        </select>
-                    </div>
                 </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Le statut sera automatiquement « En attente ». Vous pourrez envoyer le dossier au chef depuis la liste.</p>
 
             </div>
             <div class="mt-6 flex justify-end space-x-2">

@@ -1,17 +1,31 @@
 <x-app-layout>
     <div class="p-6">
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
             <h1 class="text-2xl font-bold">Gestion des utilisateurs</h1>
-            <button id="openUserModalButton" 
-                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">
-                + Ajouter un utilisateur
-            </button>
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ route('admin.users.create') }}"
+                   class="inline-flex items-center justify-center bg-blue-950 hover:bg-blue-900 text-white px-4 py-2 rounded-lg transition text-sm font-medium">
+                    Créer un compte (secrétaire / chef)
+                </a>
+                <button id="openUserModalButton" type="button"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition text-sm">
+                    + Ajout rapide (modal)
+                </button>
+            </div>
         </div>
 
-        {{-- MESSAGE SUCCESS --}}
         @if(session('success'))
-            <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
-                {{ session('success') }}
+            <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg dark:bg-green-900/30 dark:border-green-700 dark:text-green-200">
+                <p>{{ session('success') }}</p>
+                @if(session('created_email'))
+                    <p class="mt-2 text-sm font-medium">E-mail du compte créé : {{ session('created_email') }}</p>
+                @endif
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-800 rounded-lg dark:bg-red-900/30 dark:border-red-700 dark:text-red-200">
+                <p>{{ session('error') }}</p>
             </div>
         @endif
 
@@ -56,7 +70,7 @@
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Mot de passe</label>
                                 <input name="password" id="password" type="password"
                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
-                                <p class="text-xs text-gray-500 mt-1" id="passwordHelp">Minimum 8 caractères</p>
+                                <p class="text-xs text-gray-500 mt-1" id="passwordHelp">Règles du mot de passe Laravel (min. 8 caractères, etc.)</p>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Confirmer</label>
@@ -65,15 +79,23 @@
                             </div>
                         </div>
 
-                        <div>
+                        <div id="roleBlockStaff">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Rôle</label>
-                            <select name="role" id="role" required 
+                            <select name="role" id="roleSelect" required
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                 <option value="">-- Choisir un rôle --</option>
-                                <option value="admin">Admin</option>
                                 <option value="secretaire">Secrétaire</option>
-                                <option value="chefService">Chef de service</option>
+                                <option value="chef_de_service">Chef de service</option>
                             </select>
+                            <p class="text-xs text-gray-500 mt-1" id="roleHelpCreate">Création : secrétaire ou chef uniquement. Communiquez e-mail et mot de passe à l’utilisateur.</p>
+                            <p class="text-xs text-gray-500 mt-1 hidden" id="roleHelpEdit">Modification : secrétaire ou chef de service uniquement. L’administrateur est défini au déploiement (seeder).</p>
+                        </div>
+                        <div id="roleBlockAdmin" class="hidden">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Rôle</label>
+                            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300 rounded-md border border-gray-200 bg-gray-50 dark:border-gray-600 dark:bg-gray-900/50 px-3 py-2">
+                                Administrateur (compte initial — non modifiable)
+                            </p>
+                            <input type="hidden" name="role" value="admin" id="roleHiddenAdmin" disabled />
                         </div>
                     </div>
 
@@ -115,7 +137,11 @@
                                     @elseif($user->role == 'secretaire') bg-blue-100 text-blue-800
                                     @else bg-green-100 text-green-800
                                     @endif">
-                                    {{ ucfirst($user->role) }}
+                                    @if($user->role === 'chef_de_service')
+                                        Chef de service
+                                    @else
+                                        {{ ucfirst(str_replace('_', ' ', $user->role)) }}
+                                    @endif
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
@@ -124,15 +150,17 @@
                                     Modifier
                                 </button>
 
-                                <form action="{{ route('admin.users.destroy', $user->id) }}" method="POST" class="inline-block">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" 
-                                        onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.')"
-                                        class="text-red-600 hover:text-red-900 bg-red-100 hover:bg-red-200 px-3 py-1 rounded-lg transition">
-                                        Supprimer
-                                    </button>
-                                </form>
+                                @if($user->role !== 'admin')
+                                    <form action="{{ route('admin.users.destroy', $user->id) }}" method="POST" class="inline-block">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                            onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.')"
+                                            class="text-red-600 hover:text-red-900 bg-red-100 hover:bg-red-200 px-3 py-1 rounded-lg transition">
+                                            Supprimer
+                                        </button>
+                                    </form>
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -166,19 +194,43 @@
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
         const passwordConfirmation = document.getElementById('password_confirmation');
-        const roleSelect = document.getElementById('role');
+        const roleSelect = document.getElementById('roleSelect');
+        const roleBlockStaff = document.getElementById('roleBlockStaff');
+        const roleBlockAdmin = document.getElementById('roleBlockAdmin');
+        const roleHiddenAdmin = document.getElementById('roleHiddenAdmin');
         const passwordHelp = document.getElementById('passwordHelp');
         const submitBtn = document.getElementById('submitBtn');
 
-        // Ouvrir le modal pour l'ajout
+        const roleHelpCreate = document.getElementById('roleHelpCreate');
+        const roleHelpEdit = document.getElementById('roleHelpEdit');
+
+        function setRoleUiMode(mode) {
+            if (mode === 'admin') {
+                roleBlockStaff.classList.add('hidden');
+                roleBlockAdmin.classList.remove('hidden');
+                roleSelect.removeAttribute('required');
+                roleSelect.disabled = true;
+                roleHiddenAdmin.disabled = false;
+            } else {
+                roleBlockStaff.classList.remove('hidden');
+                roleBlockAdmin.classList.add('hidden');
+                roleSelect.disabled = false;
+                roleSelect.setAttribute('required', 'required');
+                roleHiddenAdmin.disabled = true;
+            }
+        }
+
         openModalBtn.addEventListener('click', () => {
             resetForm();
+            setRoleUiMode('staff');
+            roleHelpCreate.classList.remove('hidden');
+            roleHelpEdit.classList.add('hidden');
             modalTitle.textContent = 'Ajouter un utilisateur';
             formMethod.value = 'POST';
             userForm.action = "{{ route('admin.users.store') }}";
             passwordInput.required = true;
             passwordConfirmation.required = true;
-            passwordHelp.textContent = 'Minimum 8 caractères (requis)';
+            passwordHelp.textContent = 'Règles Laravel (min. 8 caractères, etc.) — requis';
             userModal.classList.remove('hidden');
             userModal.classList.add('flex');
         });
@@ -186,17 +238,24 @@
         // Fonction pour éditer un utilisateur
         window.editUser = function(id, name, email, role) {
             resetForm();
+            if (role === 'admin') {
+                setRoleUiMode('admin');
+            } else {
+                setRoleUiMode('staff');
+                roleSelect.value = role;
+            }
+            roleHelpCreate.classList.add('hidden');
+            roleHelpEdit.classList.remove('hidden');
             modalTitle.textContent = 'Modifier l\'utilisateur';
             formMethod.value = 'PUT';
             userId.value = id;
             userForm.action = "{{ url('/admin/users') }}/" + id;
             nameInput.value = name;
             emailInput.value = email;
-            roleSelect.value = role;
             passwordInput.required = false;
             passwordConfirmation.required = false;
             passwordHelp.textContent = 'Laissez vide pour conserver le mot de passe actuel';
-            
+
             userModal.classList.remove('hidden');
             userModal.classList.add('flex');
         };
@@ -222,6 +281,7 @@
         function resetForm() {
             userForm.reset();
             userId.value = '';
+            setRoleUiMode('staff');
             passwordInput.required = true;
             passwordConfirmation.required = true;
             passwordHelp.textContent = 'Minimum 8 caractères';
@@ -261,7 +321,7 @@
         }
 
         // Nettoyer les bordures rouges lors de la saisie
-        [nameInput, emailInput, passwordInput, passwordConfirmation, roleSelect].forEach(input => {
+        [nameInput, emailInput, passwordInput, passwordConfirmation, roleSelect, roleHiddenAdmin].forEach(input => {
             if (input) {
                 input.addEventListener('input', () => {
                     input.classList.remove('border-red-500');

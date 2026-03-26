@@ -4,7 +4,7 @@
             <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
                 Modifier le formulaire
             </h2>
-            <a href="{{ route('formulaires.show', $formulaire) }}" class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition">
+            <a href="{{ route('secretaire.forms.show', $formulaire) }}" class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                 </svg>
@@ -20,7 +20,7 @@
                     <h3 class="text-2xl font-bold text-white">{{ $formulaire->reference }}</h3>
                 </div>
 
-                <form method="POST" action="{{ route('formulaires.update', $formulaire) }}" enctype="multipart/form-data" class="px-6 py-6">
+                <form method="POST" action="{{ route('secretaire.forms.update', $formulaire) }}" enctype="multipart/form-data" class="px-6 py-6">
                     @csrf
                     @method('PUT')
 
@@ -158,7 +158,7 @@
 
                     <!-- Actions -->
                     <div class="mt-8 flex justify-end gap-3">
-                        <a href="{{ route('formulaires.show', $formulaire) }}" class="inline-flex items-center px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition">
+                        <a href="{{ route('secretaire.forms.show', $formulaire) }}" class="inline-flex items-center px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition">
                             Annuler
                         </a>
                         <button type="submit" class="inline-flex items-center px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition">

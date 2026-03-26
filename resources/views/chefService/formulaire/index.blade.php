@@ -105,37 +105,11 @@
                                         @endif
                                     </td>
 
-                                    <!-- Actions pour chef de service -->
                                     <td class="px-4 py-3 text-right">
-                                        <button id="actions-{{ $formulaire->id }}-button" data-dropdown-toggle="actions-{{ $formulaire->id }}-dropdown" class="inline-flex items-center p-0.5 text-sm font-medium text-center text-gray-500 hover:text-gray-800 rounded-lg focus:outline-none dark:text-gray-400 dark:hover:text-gray-100" type="button">
-                                            <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewbox="0 0 20 20">
-                                                <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z"/>
-                                            </svg>
-                                        </button>
-
-                                        <div id="actions-{{ $formulaire->id }}-dropdown" class="hidden z-10 w-44 bg-white rounded divide-y divide-gray-100 shadow dark:bg-gray-700 dark:divide-gray-600">
-                                            <ul class="py-1 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="actions-{{ $formulaire->id }}-button">
-                                                <li>
-                                                    <form action="{{ route('chefService.forms.approve', $formulaire) }}" method="POST">
-                                                        @csrf
-                                                        <button type="submit" class="block w-full text-left py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Approuver</button>
-                                                    </form>
-                                                </li>
-                                                <li>
-                                                    <a href="{{ route('chefService.forms.show', $formulaire) }}"
-                                                        class="block py-2 px-4 text-left
-                                                         hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">voir</a>
-                                                </li>
-                                                <li>
-                                                    <form action="{{ route('chefService.forms.cancel', $formulaire) }}" method="POST">
-                                                        @csrf
-                                                        <button type="submit" class="block w-full text-left py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Annuler</button>
-                                                    </form>
-                                                </li>
-                                            </ul>
-
-    
-                                        </div>
+                                        <a href="{{ route('chefService.forms.show', $formulaire) }}"
+                                           class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-950 text-white hover:bg-blue-900">
+                                            Voir
+                                        </a>
                                     </td>
                                 </tr>
                             @empty
@@ -147,19 +121,9 @@
                     </table>
                 </div>
 
-                <!-- Pagination (optionnelle) -->
-                <nav class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4" aria-label="Table navigation">
-                    <span class="text-sm font-normal text-gray-500 dark:text-gray-400">
-                        Showing <span class="font-semibold text-gray-900 dark:text-white">1-10</span> of <span class="font-semibold text-gray-900 dark:text-white">1000</span>
-                    </span>
-                    <ul class="inline-flex items-stretch -space-x-px">
-                        <li><a href="#" class="flex items-center justify-center h-full py-1.5 px-3 ml-0 text-gray-500 bg-white rounded-l-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"><span class="sr-only">Previous</span> &lt; </a></li>
-                        <li><a href="#" class="flex items-center justify-center text-sm py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">1</a></li>
-                        <li><span class="flex items-center justify-center text-sm py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">...</span></li>
-                        <li><a href="#" class="flex items-center justify-center text-sm py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">100</a></li>
-                        <li><a href="#" class="flex items-center justify-center h-full py-1.5 px-3 leading-tight text-gray-500 bg-white rounded-r-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"><span class="sr-only">Next</span> &gt; </a></li>
-                    </ul>
-                </nav>
+                <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                    {{ $formulaires->links() }}
+                </div>
             </div>
         </div>
     </section>

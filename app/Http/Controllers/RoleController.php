@@ -67,8 +67,13 @@ class RoleController extends Controller
         public function destroy(string $id)
         {
             $role = Role::findById($id);
+
+            if (in_array($role->name, ['admin', 'secretaire', 'chef_de_service'], true)) {
+                return redirect()->back()->with('error', 'Ce rôle système ne peut pas être supprimé.');
+            }
+
             $role->delete();
-        
+
             return redirect()->back()->with('success', 'Rôle supprimé avec succès.');
         }
 }
