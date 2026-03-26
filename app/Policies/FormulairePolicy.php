@@ -19,27 +19,37 @@ class FormulairePolicy
 
     public function create(User $user): bool
     {
-        return $user->role === 'secretaire';
+        return in_array($user->role, ['secretaire', 'chef_de_service'], true);
     }
 
     public function update(User $user, Formulaire $formulaire): bool
     {
-        return $user->role === 'secretaire' && $formulaire->isEditableBySecretaire();
+        return $user->role === 'secretaire'
+            && ($formulaire->createdBy?->role === 'secretaire')
+            && $formulaire->isEditableBySecretaire();
     }
 
     public function delete(User $user, Formulaire $formulaire): bool
     {
-        return $user->role === 'secretaire' && $formulaire->isEditableBySecretaire();
+        return $user->role === 'secretaire'
+            && ($formulaire->createdBy?->role === 'secretaire')
+            && $formulaire->isEditableBySecretaire();
     }
 
     public function send(User $user, Formulaire $formulaire): bool
     {
-        return $user->role === 'secretaire' && $formulaire->canBeSentToChef();
+        return $user->role === 'secretaire'
+            && ($formulaire->createdBy?->role === 'secretaire')
+            && $formulaire->canBeSentToChef();
     }
 
     public function archive(User $user, Formulaire $formulaire): bool
     {
-        return $user->role === 'secretaire' && $formulaire->canBeArchivedBySecretaire();
+        return $user->role === 'secretaire'
+            && (
+                ($formulaire->createdBy?->role === 'chef_de_service')
+                || $formulaire->canBeArchivedBySecretaire()
+            );
     }
 
     /** Annoter / valider / rejeter : dossier pas encore clos côté chef. */

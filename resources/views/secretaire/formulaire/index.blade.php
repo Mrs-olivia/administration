@@ -59,6 +59,18 @@
 
                         <div class="flex items-center space-x-3 w-full md:w-auto">
 
+                            @php
+                                $activeStatus = request()->query('status');
+                                $activeStatusLabel = $activeStatus !== null
+                                    ? match ((int) $activeStatus) {
+                                        \App\Models\Formulaire::STATUS_EN_ATTENTE => 'Nouveau',
+                                        \App\Models\Formulaire::STATUS_EN_COURS => 'En cours',
+                                        \App\Models\Formulaire::STATUS_ARCHIVE => 'Archivé',
+                                        default => '',
+                                    }
+                                    : '';
+                            @endphp
+
                             <button id="filterDropdownButton" data-dropdown-toggle="filterDropdown"
                                 class="w-full md:w-auto flex items-center justify-center py-2 px-4 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"
                                 type="button">
@@ -68,7 +80,7 @@
                                         d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z"
                                         clip-rule="evenodd" />
                                 </svg>
-                                Filtrer par statut
+                                {{ $activeStatusLabel ?: 'Filtrer par statut' }}
                                 <svg class="-mr-1 ml-1.5 w-5 h-5" fill="currentColor" viewbox="0 0 20 20"
                                     xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                                     <path clip-rule="evenodd" fill-rule="evenodd"
@@ -81,22 +93,22 @@
                                 </h6>
                                 <ul class="space-y-2 text-sm" aria-labelledby="filterDropdownButton">
                                     <li class="flex items-center">
-                                        <a href="#"
-                                            class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600">
+                                        <a href="{{ route('secretaire.forms.index', array_merge(request()->except(['status', 'page']), ['status' => \App\Models\Formulaire::STATUS_EN_ATTENTE])) }}"
+                                            class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600 @if($activeStatus !== null && (int) $activeStatus === \App\Models\Formulaire::STATUS_EN_ATTENTE) font-semibold text-blue-800 dark:text-blue-300 @endif">
                                             Nouveau
                                         </a>
                                     </li>
 
                                     <li class="flex items-center">
-                                        <a href="#"
-                                            class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600">
+                                        <a href="{{ route('secretaire.forms.index', array_merge(request()->except(['status', 'page']), ['status' => \App\Models\Formulaire::STATUS_EN_COURS])) }}"
+                                            class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600 @if($activeStatus !== null && (int) $activeStatus === \App\Models\Formulaire::STATUS_EN_COURS) font-semibold text-blue-800 dark:text-blue-300 @endif">
                                             En cours
                                         </a>
                                     </li>
 
                                     <li class="flex items-center">
-                                        <a href="#"
-                                            class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600">
+                                        <a href="{{ route('secretaire.forms.index', array_merge(request()->except(['status', 'page']), ['status' => \App\Models\Formulaire::STATUS_ARCHIVE])) }}"
+                                            class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600 @if($activeStatus !== null && (int) $activeStatus === \App\Models\Formulaire::STATUS_ARCHIVE) font-semibold text-blue-800 dark:text-blue-300 @endif">
                                             Archivé
                                         </a>
                                     </li>
@@ -175,16 +187,14 @@
                                                     <button type="submit" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800 hover:bg-red-200">Supprimer</button>
                                                 </form>
                                             @endcan
-                                            @if($formulaire->canBeArchivedBySecretaire())
-                                                @can('archive', $formulaire)
-                                                    <form action="{{ route('secretaire.forms.archive', $formulaire) }}" method="POST" class="inline" onsubmit="return confirm('Archiver ce dossier ?');">
-                                                        @csrf
-                                                        <button type="submit" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-purple-100 text-purple-800 hover:bg-purple-200">Archiver</button>
-                                                    </form>
-                                                @endcan
+                                            @can('archive', $formulaire)
+                                                <form action="{{ route('secretaire.forms.archive', $formulaire) }}" method="POST" class="inline" onsubmit="return confirm('Archiver ce dossier ?');">
+                                                    @csrf
+                                                    <button type="submit" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-purple-100 text-purple-800 hover:bg-purple-200">Archiver</button>
+                                                </form>
                                             @else
-                                                <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-400 dark:bg-gray-600 dark:text-gray-500 cursor-not-allowed" title="Archivage possible uniquement pour les dossiers traités ou rejetés par le chef">Archiver</span>
-                                            @endif
+                                                <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-400 dark:bg-gray-600 dark:text-gray-500 cursor-not-allowed" title="Vous n’avez pas l’autorisation d’archiver ce dossier">Archiver</span>
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

@@ -4,9 +4,12 @@ namespace App\Http\Controllers\ChefService;
 
 use App\Events\DossierMisAJour;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreformulaireRequest;
 use App\Models\Formulaire;
 use App\Models\User;
+use App\Models\WorkflowLog;
 use App\Notifications\DecisionChefSurDossier;
+use App\Notifications\DossierEnvoyeAuSecretaire;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -14,14 +17,99 @@ use Illuminate\View\View;
 
 class FormulaireController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $formulaires = Formulaire::query()
-            ->where('status', '!=', Formulaire::STATUS_ARCHIVE)
-            ->latest()
-            ->paginate(15);
+        $allowedStatuses = [
+            Formulaire::STATUS_EN_ATTENTE,
+            Formulaire::STATUS_EN_COURS,
+            Formulaire::STATUS_TRAITE,
+            Formulaire::STATUS_REJETE,
+            Formulaire::STATUS_ARCHIVE,
+        ];
+
+        $query = Formulaire::query()->latest();
+
+        $status = $request->query('status');
+        if ($status !== null) {
+            $statusInt = (int) $status;
+            if (in_array($statusInt, $allowedStatuses, true)) {
+                $query->where('status', $statusInt);
+            }
+        } else {
+            // Par défaut côté chef : on masque les archives.
+            $query->where('status', '!=', Formulaire::STATUS_ARCHIVE);
+        }
+
+        $formulaires = $query->paginate(15)->withQueryString();
 
         return view('chefService.formulaire.index', compact('formulaires'));
+    }
+
+    /**
+     * Formulaires créés par le chef (envoi au secrétariat).
+     */
+    public function created(Request $request): View
+    {
+        $allowedStatuses = [
+            Formulaire::STATUS_EN_ATTENTE,
+            Formulaire::STATUS_EN_COURS,
+            Formulaire::STATUS_TRAITE,
+            Formulaire::STATUS_REJETE,
+            Formulaire::STATUS_ARCHIVE,
+        ];
+
+        $query = Formulaire::query()
+            ->where('created_by_user_id', $request->user()->id)
+            ->latest();
+
+        $status = $request->query('status');
+        if ($status !== null) {
+            $statusInt = (int) $status;
+            if (in_array($statusInt, $allowedStatuses, true)) {
+                $query->where('status', $statusInt);
+            }
+        }
+
+        $formulaires = $query->paginate(15)->withQueryString();
+
+        return view('chefService.formulaire.created', compact('formulaires'));
+    }
+
+    public function store(StoreformulaireRequest $request): RedirectResponse
+    {
+        $this->authorize('create', Formulaire::class);
+
+        $data = $request->validated();
+
+        if ($request->type_document === 'Autre' && $request->filled('autre_type_document')) {
+            $data['type_document'] = $request->autre_type_document;
+        }
+
+        if ($request->hasFile('fichier')) {
+            $data['fichier'] = $request->file('fichier')->store('documents', 'public');
+        }
+
+        unset($data['status'], $data['autre_type_document']);
+
+        $data['status'] = Formulaire::STATUS_EN_ATTENTE;
+        $data['created_by_user_id'] = $request->user()->id;
+
+        $formulaire = Formulaire::create($data);
+
+        // Notifier le secrétariat.
+        User::role('secretaire')->get()->each(function (User $secretaire) use ($formulaire): void {
+            $secretaire->notify(new DossierEnvoyeAuSecretaire($formulaire));
+        });
+
+        event(new DossierMisAJour($formulaire->fresh()));
+
+        $this->logWorkflow($formulaire, 'chef_formulaire_created', [
+            'type_document' => $formulaire->type_document,
+        ]);
+
+        return redirect()
+            ->route('chefService.forms.created')
+            ->with('success', 'Formulaire créé et envoyé au secrétariat. Le secrétariat pourra uniquement l’archiver.');
     }
 
     public function show(Formulaire $formulaire): View
@@ -32,6 +120,8 @@ class FormulaireController extends Controller
             $formulaire->status = Formulaire::STATUS_EN_COURS;
             $formulaire->save();
             event(new DossierMisAJour($formulaire->fresh()));
+
+            $this->logWorkflow($formulaire, 'chef_status_set_in_progress');
         }
 
         return view('chefService.formulaire.show', compact('formulaire'));
@@ -53,6 +143,10 @@ class FormulaireController extends Controller
             $formulaire->annotation_chef = $texte;
             $formulaire->save();
             event(new DossierMisAJour($formulaire->fresh()));
+
+            $this->logWorkflow($formulaire, 'chef_formulaire_annotated', [
+                'annotation_length' => mb_strlen($texte),
+            ]);
 
             return redirect()->route('chefService.forms.show', $formulaire)->with('success', 'Annotation enregistrée.');
         }
@@ -90,6 +184,8 @@ class FormulaireController extends Controller
         event(new DossierMisAJour($formulaire->fresh()));
         $this->notifierSecretaire($formulaire, 'valide');
 
+        $this->logWorkflow($formulaire, 'chef_formulaire_validated');
+
         return redirect()->route('chefService.forms.show', $formulaire)->with('success', 'Dossier validé. Le secrétariat a été notifié.');
     }
 
@@ -123,6 +219,8 @@ class FormulaireController extends Controller
         event(new DossierMisAJour($formulaire->fresh()));
         $this->notifierSecretaire($formulaire, 'rejete');
 
+        $this->logWorkflow($formulaire, 'chef_formulaire_rejected');
+
         return redirect()->route('chefService.forms.show', $formulaire)->with('success', 'Dossier rejeté. Le secrétariat a été notifié.');
     }
 
@@ -134,5 +232,16 @@ class FormulaireController extends Controller
 
         $auteur = User::find($formulaire->created_by_user_id);
         $auteur?->notify(new DecisionChefSurDossier($formulaire, $type));
+    }
+
+    private function logWorkflow(Formulaire $formulaire, string $action, array $details = []): void
+    {
+        WorkflowLog::create([
+            'formulaire_id' => $formulaire->id,
+            'user_id' => auth()->id(),
+            'user_role' => auth()->user()?->role,
+            'action' => $action,
+            'details' => $details !== [] ? $details : null,
+        ]);
     }
 }

@@ -28,10 +28,8 @@ class PermissionController extends Controller
             'matrix.*.*' => ['integer', 'exists:permissions,id'],
         ]);
 
-        $admin = Role::findByName('admin');
-        $admin?->syncPermissions(Permission::all());
-
-        foreach (Role::query()->where('name', '!=', 'admin')->get() as $role) {
+        // (Re)calcule la matrice complète, y compris pour le rôle "admin".
+        foreach (Role::query()->get() as $role) {
             $ids = $request->input('matrix.'.$role->id, []);
             $role->syncPermissions($ids);
         }
@@ -40,6 +38,6 @@ class PermissionController extends Controller
 
         return redirect()
             ->route('admin.permissions.index')
-            ->with('success', 'Permissions enregistrées. Le rôle administrateur conserve toujours l’ensemble des droits.');
+            ->with('success', 'Permissions enregistrées.');
     }
 }

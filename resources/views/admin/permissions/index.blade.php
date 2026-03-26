@@ -5,7 +5,7 @@
                 Matrice des permissions
             </h2>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-                L’administrateur possède toujours toutes les permissions. Les autres rôles sont ajustables (évolution prévue).
+                Les permissions sont ajustables pour chaque rôle (y compris l’administrateur). Vous confirmerez chaque changement.
             </p>
         </div>
     </x-slot>
@@ -61,16 +61,24 @@
                                 </td>
                                 @foreach($roles as $role)
                                     <td class="px-3 py-3 text-center align-middle">
-                                        @if($role->name === 'admin')
-                                            <input type="checkbox" checked disabled
-                                                   class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700">
-                                        @else
-                                            <input type="checkbox"
-                                                   name="matrix[{{ $role->id }}][]"
-                                                   value="{{ $permission->id }}"
-                                                   @checked($role->hasPermissionTo($permission))
-                                                   class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700">
-                                        @endif
+                                        @php
+                                            $roleColorClass = match ($role->name) {
+                                                'admin' => 'text-blue-600 focus:ring-blue-500',
+                                                'secretaire' => 'text-red-600 focus:ring-red-500',
+                                                'chef_de_service' => 'text-yellow-500 focus:ring-yellow-500',
+                                                default => 'text-blue-600 focus:ring-blue-500',
+                                            };
+                                        @endphp
+                                        <input type="checkbox"
+                                               name="matrix[{{ $role->id }}][]"
+                                               value="{{ $permission->id }}"
+                                               @checked($role->hasPermissionTo($permission))
+                                               class="permission-toggle h-4 w-4 rounded border-gray-300 {{ $roleColorClass }} dark:border-gray-600 dark:bg-gray-700"
+                                               data-prev-checked="{{ $role->hasPermissionTo($permission) ? 'true' : 'false' }}"
+                                               data-permission="{{ $permission->name }}"
+                                               data-permission-label="{{ $labels[$permission->name] ?? $permission->name }}"
+                                               data-role="{{ $role->name }}"
+                                        >
                                     </td>
                                 @endforeach
                             </tr>
@@ -81,7 +89,7 @@
 
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <p class="text-sm text-gray-500 dark:text-gray-400">
-                    Cochez les cases pour chaque rôle (sauf administrateur, figé). Enregistrez pour appliquer.
+                    Cochez/décochez les permissions pour chaque rôle, puis enregistrez. Une confirmation vous sera demandée à chaque changement.
                 </p>
                 <button type="submit"
                         class="inline-flex items-center rounded-lg bg-blue-950 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
@@ -89,5 +97,34 @@
                 </button>
             </div>
         </form>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                document.querySelectorAll('input.permission-toggle').forEach((checkbox) => {
+                    checkbox.addEventListener('change', () => {
+                        if (checkbox.dataset.reverting === '1') return;
+
+                        const prevChecked = checkbox.dataset.prevChecked === 'true';
+                        const nowChecked = checkbox.checked;
+                        if (prevChecked === nowChecked) return;
+
+                        const permissionLabel = checkbox.dataset.permissionLabel || checkbox.dataset.permission || '';
+                        const roleName = checkbox.dataset.role || '';
+                        const verb = nowChecked ? 'cocher' : 'décocher';
+                        const msg = `Succès : ${verb} la permission "${permissionLabel}" pour le rôle "${roleName}" ?`;
+
+                        if (!window.confirm(msg)) {
+                            checkbox.dataset.reverting = '1';
+                            checkbox.checked = prevChecked;
+                            checkbox.dataset.prevChecked = String(prevChecked);
+                            checkbox.dataset.reverting = '0';
+                            return;
+                        }
+
+                        checkbox.dataset.prevChecked = String(nowChecked);
+                    });
+                });
+            });
+        </script>
     </div>
 </x-app-layout>

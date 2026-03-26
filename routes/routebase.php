@@ -7,6 +7,7 @@ use App\Http\Controllers\ChefService\FormulaireController as ChefServiceControll
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\Secretaire\DashboardController as SecretaireDashboardController;
 use App\Http\Controllers\Secretaire\FormulaireController as SecretaireController;
+use App\Http\Controllers\Secretaire\WorkflowLogController as SecretaireWorkflowLogController;
 use Illuminate\Support\Facades\Route;
 
 // ------------------ ADMIN ------------------
@@ -63,6 +64,10 @@ Route::prefix('secretaire')->middleware('auth')->group(function () {
     Route::post('/forms/{formulaire}/archive', [SecretaireController::class, 'archive'])
         ->middleware('permission:formulaires.edit')
         ->name('secretaire.forms.archive');
+
+    Route::get('/workflow-logs', [SecretaireWorkflowLogController::class, 'index'])
+        ->middleware('permission:formulaires.view')
+        ->name('secretaire.workflow_logs.index');
 });
 
 // ------------------ CHEF DE SERVICE ------------------
@@ -74,6 +79,11 @@ Route::prefix('chefService')->middleware('auth')->group(function () {
     Route::get('/forms', [ChefServiceController::class, 'index'])
         ->middleware('permission:formulaires.view')
         ->name('chefService.forms.index');
+    Route::get('/forms-created', [ChefServiceController::class, 'created'])
+        ->middleware('permission:formulaires.view')
+        ->name('chefService.forms.created');
+    Route::post('/forms', [ChefServiceController::class, 'store'])
+        ->name('chefService.forms.store');
     Route::get('/forms/{formulaire}', [ChefServiceController::class, 'show'])
         ->middleware('permission:formulaires.view')
         ->name('chefService.forms.show');

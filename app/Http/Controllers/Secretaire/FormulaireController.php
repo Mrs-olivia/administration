@@ -8,6 +8,7 @@ use App\Http\Requests\StoreformulaireRequest;
 use App\Http\Requests\UpdateformulaireRequest;
 use App\Models\Formulaire;
 use App\Models\User;
+use App\Models\WorkflowLog;
 use App\Notifications\DossierEnvoyeAuChef;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -51,10 +52,28 @@ class FormulaireController extends Controller
         return response()->json($formulaire->fresh()->toPollPayload());
     }
 
-    public function index(): View
+    public function index(Request $request): View
     {
         $this->authorize('viewAny', Formulaire::class);
-        $formulaires = Formulaire::latest()->paginate(15);
+
+        $allowedStatuses = [
+            Formulaire::STATUS_EN_ATTENTE,
+            Formulaire::STATUS_EN_COURS,
+            Formulaire::STATUS_TRAITE,
+            Formulaire::STATUS_REJETE,
+            Formulaire::STATUS_ARCHIVE,
+        ];
+
+        $query = Formulaire::query()->latest();
+        $status = $request->query('status');
+        if ($status !== null) {
+            $statusInt = (int) $status;
+            if (in_array($statusInt, $allowedStatuses, true)) {
+                $query->where('status', $statusInt);
+            }
+        }
+
+        $formulaires = $query->paginate(15)->withQueryString();
 
         return view('secretaire.formulaire.index', compact('formulaires'));
     }
@@ -78,7 +97,11 @@ class FormulaireController extends Controller
         $data['status'] = Formulaire::STATUS_EN_ATTENTE;
         $data['created_by_user_id'] = $request->user()->id;
 
-        Formulaire::create($data);
+        $formulaire = Formulaire::create($data);
+
+        $this->logWorkflow($formulaire, 'secretaire_formulaire_created', [
+            'type_document' => $formulaire->type_document,
+        ]);
 
         return redirect()->route('secretaire.forms.index')->with('success', 'Dossier créé. Statut : En attente. Vous pouvez le modifier ou l’envoyer au chef.');
     }
@@ -115,6 +138,10 @@ class FormulaireController extends Controller
 
         $formulaire->update($data);
 
+        $this->logWorkflow($formulaire, 'secretaire_formulaire_updated', [
+            'updated_fields' => array_keys($data),
+        ]);
+
         return redirect()->route('secretaire.forms.index')->with('success', 'Dossier mis à jour.');
     }
 
@@ -122,11 +149,15 @@ class FormulaireController extends Controller
     {
         $this->authorize('delete', $formulaire);
 
+        $formulaireId = $formulaire->id;
+
         if ($formulaire->fichier) {
             \Illuminate\Support\Facades\Storage::disk('public')->delete($formulaire->fichier);
         }
 
         $formulaire->delete();
+
+        $this->logWorkflow(new Formulaire(['id' => $formulaireId]), 'secretaire_formulaire_deleted');
 
         return redirect()->route('secretaire.forms.index')->with('success', 'Dossier supprimé.');
     }
@@ -146,6 +177,8 @@ class FormulaireController extends Controller
 
         event(new DossierMisAJour($formulaire->fresh()));
 
+        $this->logWorkflow($formulaire, 'secretaire_formulaire_sent_to_chef');
+
         return redirect()->back()->with('success', 'Le chef a été notifié. Le dossier reste « En attente » jusqu’à son ouverture.');
     }
 
@@ -158,6 +191,19 @@ class FormulaireController extends Controller
 
         event(new DossierMisAJour($formulaire->fresh()));
 
+        $this->logWorkflow($formulaire, 'secretaire_formulaire_archived');
+
         return redirect()->back()->with('success', 'Dossier archivé.');
+    }
+
+    private function logWorkflow(Formulaire $formulaire, string $action, array $details = []): void
+    {
+        WorkflowLog::create([
+            'formulaire_id' => $formulaire->id,
+            'user_id' => auth()->id(),
+            'user_role' => auth()->user()?->role,
+            'action' => $action,
+            'details' => $details !== [] ? $details : null,
+        ]);
     }
 }

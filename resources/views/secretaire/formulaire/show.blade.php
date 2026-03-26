@@ -120,16 +120,14 @@
                         </form>
                     @endcan
 
-                    @if($formulaire->canBeArchivedBySecretaire())
-                        @can('archive', $formulaire)
-                            <form action="{{ route('secretaire.forms.archive', $formulaire) }}" method="POST" class="inline" onsubmit="return confirm('Archiver ce dossier ?');">
-                                @csrf
-                                <button type="submit" class="inline-flex items-center px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-sm">Archiver</button>
-                            </form>
-                        @endcan
+                    @can('archive', $formulaire)
+                        <form action="{{ route('secretaire.forms.archive', $formulaire) }}" method="POST" class="inline" onsubmit="return confirm('Archiver ce dossier ?');">
+                            @csrf
+                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-sm">Archiver</button>
+                        </form>
                     @else
-                        <span class="inline-flex items-center px-4 py-2 rounded-lg text-sm bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500" title="Archivage possible uniquement après traitement ou rejet par le chef">Archiver (indisponible)</span>
-                    @endif
+                        <span class="inline-flex items-center px-4 py-2 rounded-lg text-sm bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500" title="Vous n’avez pas l’autorisation d’archiver ce dossier">Archiver</span>
+                    @endcan
                 </div>
             </div>
         </div>

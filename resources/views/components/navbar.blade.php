@@ -72,6 +72,19 @@
                   <span class="ms-3 font-medium">Formulaires</span>
                </a>
             </li>
+            <li>
+               <a href="{{ route('secretaire.forms.index', ['status' => \App\Models\Formulaire::STATUS_ARCHIVE]) }}"
+                  class="flex items-center px-2 py-1.5 text-body rounded-base hover:bg-neutral-tertiary hover:text-fg-brand group {{ (int) request('status') === \App\Models\Formulaire::STATUS_ARCHIVE ? 'bg-neutral-tertiary text-fg-brand' : '' }}">
+                  <svg class="shrink-0 w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7l9 6 9-6"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5h8"/></svg>
+                  <span class="ms-3 font-medium">Archives</span>
+               </a>
+            </li>
+            <li>
+               <a href="{{ route('secretaire.workflow_logs.index') }}" class="flex items-center px-2 py-1.5 text-body rounded-base hover:bg-neutral-tertiary hover:text-fg-brand group {{ request()->routeIs('secretaire.workflow_logs.*') ? 'bg-neutral-tertiary text-fg-brand' : '' }}">
+                  <svg class="shrink-0 w-5 h-5 transition duration-75 group-hover:text-fg-brand" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2-10H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V8a2 2 0 00-2-2z"/></svg>
+                  <span class="ms-3">Logs workflow</span>
+               </a>
+            </li>
          @elseif($role === 'chef_de_service')
             <li>
                <a href="{{ route('chefService.dashboard') }}" class="flex items-center px-2 py-1.5 text-body rounded-base hover:bg-neutral-tertiary hover:text-fg-brand group {{ request()->routeIs('chefService.dashboard') ? 'bg-neutral-tertiary text-fg-brand' : '' }}">
@@ -83,6 +96,19 @@
                <a href="{{ route('chefService.forms.index') }}" class="flex items-center px-2 py-1.5 text-body rounded-base hover:bg-neutral-tertiary hover:text-fg-brand group {{ request()->routeIs('chefService.forms.*') ? 'bg-neutral-tertiary text-fg-brand' : '' }}">
                   <svg class="shrink-0 w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                   <span class="ms-3 font-medium">Formulaires à traiter</span>
+               </a>
+            </li>
+            <li>
+               <a href="{{ route('chefService.forms.index', ['status' => \App\Models\Formulaire::STATUS_ARCHIVE]) }}"
+                  class="flex items-center px-2 py-1.5 text-body rounded-base hover:bg-neutral-tertiary hover:text-fg-brand group {{ (int) request('status') === \App\Models\Formulaire::STATUS_ARCHIVE ? 'bg-neutral-tertiary text-fg-brand' : '' }}">
+                  <svg class="shrink-0 w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7l9 6 9-6"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5h8"/></svg>
+                  <span class="ms-3 font-medium">Archives</span>
+               </a>
+            </li>
+            <li>
+               <a href="{{ route('chefService.forms.created') }}" class="flex items-center px-2 py-1.5 text-body rounded-base hover:bg-neutral-tertiary hover:text-fg-brand group {{ request()->routeIs('chefService.forms.created') ? 'bg-neutral-tertiary text-fg-brand' : '' }}">
+                  <svg class="shrink-0 w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  <span class="ms-3 font-medium">Formulaires créés</span>
                </a>
             </li>
          @else
