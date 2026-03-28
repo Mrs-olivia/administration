@@ -109,12 +109,14 @@ class FormulaireController extends Controller
     public function show(Formulaire $formulaire): View
     {
         $this->authorize('view', $formulaire);
+
         return view('secretaire.formulaire.show', compact('formulaire'));
     }
 
     public function edit(Formulaire $formulaire): View
     {
         $this->authorize('update', $formulaire);
+
         return view('secretaire.formulaire.edit', compact('formulaire'));
     }
 
@@ -149,15 +151,11 @@ class FormulaireController extends Controller
     {
         $this->authorize('delete', $formulaire);
 
-        $formulaireId = $formulaire->id;
-
         if ($formulaire->fichier) {
             \Illuminate\Support\Facades\Storage::disk('public')->delete($formulaire->fichier);
         }
 
         $formulaire->delete();
-
-        $this->logWorkflow(new Formulaire(['id' => $formulaireId]), 'secretaire_formulaire_deleted');
 
         return redirect()->route('secretaire.forms.index')->with('success', 'Dossier supprimé.');
     }
@@ -166,7 +164,9 @@ class FormulaireController extends Controller
     {
         $this->authorize('send', $formulaire);
 
-        if ($formulaire->sent_to_chef_at === null) {
+        $alreadySentToChef = $formulaire->sent_to_chef_at !== null;
+
+        if (! $alreadySentToChef) {
             $formulaire->sent_to_chef_at = now();
             $formulaire->save();
         }
@@ -175,11 +175,20 @@ class FormulaireController extends Controller
             $chef->notify(new DossierEnvoyeAuChef($formulaire));
         });
 
-        event(new DossierMisAJour($formulaire->fresh()));
+        $formulaire = $formulaire->fresh();
 
-        $this->logWorkflow($formulaire, 'secretaire_formulaire_sent_to_chef');
+        event(new DossierMisAJour($formulaire));
 
-        return redirect()->back()->with('success', 'Le chef a été notifié. Le dossier reste « En attente » jusqu’à son ouverture.');
+        $this->logWorkflow(
+            $formulaire,
+            $alreadySentToChef ? 'secretaire_formulaire_resent_to_chef' : 'secretaire_formulaire_sent_to_chef'
+        );
+
+        $message = $alreadySentToChef
+            ? 'Une nouvelle notification a été envoyée au chef.'
+            : 'Le chef a été notifié. Le dossier reste « En attente » jusqu’à son ouverture.';
+
+        return redirect()->back()->with('success', $message);
     }
 
     public function archive(Formulaire $formulaire): RedirectResponse

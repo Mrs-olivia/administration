@@ -44,6 +44,7 @@
                                 'secretaire_formulaire_updated' => 'Formulaire mis à jour par le secrétariat',
                                 'secretaire_formulaire_deleted' => 'Formulaire supprimé par le secrétariat',
                                 'secretaire_formulaire_sent_to_chef' => 'Dossier envoyé au chef par le secrétariat',
+                                'secretaire_formulaire_resent_to_chef' => 'Notification renvoyée au chef par le secrétariat',
                                 'secretaire_formulaire_archived' => 'Dossier archivé par le secrétariat',
                                 'chef_formulaire_created' => 'Formulaire créé par le chef',
                                 'chef_status_set_in_progress' => 'Le chef a pris en charge le dossier',

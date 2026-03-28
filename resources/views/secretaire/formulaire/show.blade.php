@@ -106,14 +106,17 @@
                     @endcan
 
                     @can('send', $formulaire)
-                        <form action="{{ route('secretaire.forms.send', $formulaire) }}" method="POST" class="inline" onsubmit="return confirm('Notifier le chef ?');">
+                        <form action="{{ route('secretaire.forms.send', $formulaire) }}" method="POST" class="inline"
+                              onsubmit="return confirm({{ $formulaire->sent_to_chef_at ? "'Voulez-vous renvoyer une notification au chef ?'" : "'Notifier le chef pour ce dossier ?'" }});">
                             @csrf
-                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm">Envoyer au chef</button>
+                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm">
+                                {{ $formulaire->sent_to_chef_at ? 'Renvoyer au chef' : 'Envoyer au chef' }}
+                            </button>
                         </form>
                     @endcan
 
                     @can('delete', $formulaire)
-                        <form action="{{ route('secretaire.forms.destroy', $formulaire) }}" method="POST" class="inline" onsubmit="return confirm('Supprimer définitivement ?');">
+                        <form action="{{ route('secretaire.forms.destroy', $formulaire) }}" method="POST" class="inline" onsubmit="return confirm('Supprimer définitivement ce dossier ? Cette action est irréversible.');">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm">Supprimer</button>

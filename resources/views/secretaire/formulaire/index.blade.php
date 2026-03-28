@@ -175,13 +175,16 @@
                                                 <a href="{{ route('secretaire.forms.edit', $formulaire) }}" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800 hover:bg-blue-200">Éditer</a>
                                             @endcan
                                             @can('send', $formulaire)
-                                                <form action="{{ route('secretaire.forms.send', $formulaire) }}" method="POST" class="inline" onsubmit="return confirm('Notifier le chef pour ce dossier ?');">
+                                                <form action="{{ route('secretaire.forms.send', $formulaire) }}" method="POST" class="inline"
+                                                      onsubmit="return confirm({{ $formulaire->sent_to_chef_at ? "'Voulez-vous renvoyer une notification au chef ?'" : "'Notifier le chef pour ce dossier ?'" }});">
                                                     @csrf
-                                                    <button type="submit" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-amber-100 text-amber-900 hover:bg-amber-200">Envoyer</button>
+                                                    <button type="submit" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-amber-100 text-amber-900 hover:bg-amber-200">
+                                                        {{ $formulaire->sent_to_chef_at ? 'Renvoyer' : 'Envoyer' }}
+                                                    </button>
                                                 </form>
                                             @endcan
                                             @can('delete', $formulaire)
-                                                <form action="{{ route('secretaire.forms.destroy', $formulaire) }}" method="POST" class="inline" onsubmit="return confirm('Supprimer ce dossier ?');">
+                                                <form action="{{ route('secretaire.forms.destroy', $formulaire) }}" method="POST" class="inline" onsubmit="return confirm('Supprimer définitivement ce dossier ? Cette action est irréversible.');">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800 hover:bg-red-200">Supprimer</button>
