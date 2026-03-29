@@ -16,15 +16,6 @@
     @endif
     <section id="pageWrapper" class="bg-gray-50 dark:bg-gray-900 p-3 sm:p-5 transition-all duration-300">
         <div class="mx-auto max-w-screen-xl px-4 lg:px-12">
-            <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
-                <p class="font-medium">Pourquoi un dossier peut « disparaître » de votre liste</p>
-                <ul class="mt-2 list-disc space-y-1 pl-5 text-amber-900/90 dark:text-amber-200/90">
-                    <li>S’il a été <strong>transféré vers un autre service</strong>, il ne figure plus ici : il est suivi par le secrétariat de ce service (référence et origine conservées sur la fiche côté destinataire).</li>
-                    <li>Le bouton ou le menu <strong>« Transmis » / Dossiers transmis</strong> n’affiche que les dossiers ayant déjà été retransmis au moins une fois — pas toute la liste.</li>
-                    <li>Les <strong>filtres par statut</strong> (menu « Filtrer par statut ») limitent aussi les résultats.</li>
-                    <li>Un dossier en <strong>relais</strong> ne peut pas être modifié ni archivé par le secrétariat relais : après décision du chef, vous pouvez le <strong>transférer vers un autre service</strong> ou le <strong>renvoyer au service initiateur</strong> ; l’archivage final reste au service d’origine après une <strong>dernière décision chef</strong> sur place.</li>
-                </ul>
-            </div>
             @if(request()->boolean('transferred'))
                 <div class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-teal-200 bg-teal-50/90 px-4 py-3 text-sm text-teal-900 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-100">
                     <span>Filtre actif : <strong>dossiers ayant été transmis au moins une fois</strong> vers un autre service (trace conservée).</span>
