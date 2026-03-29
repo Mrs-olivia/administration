@@ -13,6 +13,12 @@
         </div>
     </x-slot>
 
+    @if (session('success'))
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+            <div class="p-4 text-sm rounded-lg bg-green-100 text-green-800 border border-green-300" role="status">{{ session('success') }}</div>
+        </div>
+    @endif
+
     <section class="bg-gray-50 dark:bg-gray-900 p-3 sm:p-5 transition-all duration-300">
         <div class="mx-auto max-w-screen-xl px-4 lg:px-12">
             <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
@@ -66,7 +72,7 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date réception</label>
-                                <input name="date_reception" type="date" value="{{ old('date_reception', $formulaire->date_reception?->format('Y-m-d')) }}"
+                                <input id="date_reception_edit" name="date_reception" type="date" value="{{ old('date_reception', $formulaire->date_reception?->format('Y-m-d')) }}"
                                     class="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2" />
                                 @error('date_reception')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
@@ -74,7 +80,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date échéance</label>
-                                <input name="date_echeance" type="date" value="{{ old('date_echeance', $formulaire->date_echeance?->format('Y-m-d')) }}"
+                                <input id="date_echeance_edit" name="date_echeance" type="date" value="{{ old('date_echeance', $formulaire->date_echeance?->format('Y-m-d')) }}"
                                     class="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2" />
                                 @error('date_echeance')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
@@ -148,6 +154,22 @@
             const typeDocumentSelect = document.getElementById('type_document_edit');
             const autreTypeDocumentInput = document.getElementById('autre_type_document_edit');
             const form = document.querySelector('form');
+            const dateReceptionEdit = document.getElementById('date_reception_edit');
+            const dateEcheanceEdit = document.getElementById('date_echeance_edit');
+            const dateOrderMsg = 'Impossible d\'avoir une date d\'échéance inférieure à la date de réception.';
+
+            const syncEcheanceMinEdit = () => {
+                const r = dateReceptionEdit?.value;
+                if (dateEcheanceEdit) {
+                    dateEcheanceEdit.min = r || '';
+                    if (r && dateEcheanceEdit.value && dateEcheanceEdit.value < r) {
+                        dateEcheanceEdit.value = r;
+                    }
+                }
+            };
+            dateReceptionEdit?.addEventListener('change', syncEcheanceMinEdit);
+            dateReceptionEdit?.addEventListener('input', syncEcheanceMinEdit);
+            syncEcheanceMinEdit();
 
             // Gérer l'affichage/masquage du champ "Autre"
             const toggleAutreField = () => {
@@ -168,6 +190,13 @@
 
             // Gérer la soumission du formulaire
             form?.addEventListener('submit', function(e) {
+                const r = dateReceptionEdit?.value;
+                const ec = dateEcheanceEdit?.value;
+                if (r && ec && ec < r) {
+                    e.preventDefault();
+                    alert(dateOrderMsg);
+                    return;
+                }
                 if (typeDocumentSelect?.value === 'Autre') {
                     const autreValue = autreTypeDocumentInput?.value?.trim();
                     if (autreValue) {

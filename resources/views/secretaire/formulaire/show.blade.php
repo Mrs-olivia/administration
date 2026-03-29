@@ -12,7 +12,7 @@
 
     @if (session('success'))
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-            <div class="p-4 text-sm rounded-lg bg-green-100 text-green-800 border border-green-300">{{ session('success') }}</div>
+            <div class="p-4 text-sm rounded-lg bg-green-100 text-green-800 border border-green-300" role="status">{{ session('success') }}</div>
         </div>
     @endif
     @if ($errors->any())
@@ -58,6 +58,11 @@
                             @if(filled($formulaire->origine_service_code))
                                 <span class="text-blue-100/80">({{ $formulaire->origineServiceLabel() }})</span>
                             @endif
+                        </p>
+                    @endif
+                    @if($formulaire->transfer_requires_secretary_edit)
+                        <p class="text-amber-100 text-sm mt-2 max-w-2xl leading-relaxed border border-amber-500/40 rounded-md px-2 py-1.5 bg-amber-950/25">
+                            <strong>Transfert inter-services :</strong> après le rejet du chef sur ce dossier revenu d’un circuit inter-services, vous devez <strong>modifier le dossier</strong> (au moins une enregistrement depuis la fiche « Éditer ») avant de pouvoir le transférer à nouveau.
                         </p>
                     @endif
                     @if($formulaire->hasTransferTrace())

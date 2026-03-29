@@ -32,6 +32,7 @@ class Formulaire extends Model
         'transfers_count',
         'first_transferred_at',
         'last_transferred_at',
+        'transfer_requires_secretary_edit',
         'annee',
         'numero_ordre',
         'expediteur',
@@ -56,6 +57,7 @@ class Formulaire extends Model
         'sent_to_chef_at' => 'datetime',
         'first_transferred_at' => 'datetime',
         'last_transferred_at' => 'datetime',
+        'transfer_requires_secretary_edit' => 'boolean',
         'chef_annotations_log' => 'array',
     ];
 
@@ -278,6 +280,12 @@ class Formulaire extends Model
             return false;
         }
 
+        // Après rejet du chef du service d’origine sur un dossier déjà passé par un circuit inter-services :
+        // le secrétariat doit modifier le dossier avant tout nouveau transfert.
+        if ($this->transfer_requires_secretary_edit) {
+            return false;
+        }
+
         // Rejet lors de la validation interne au service d’origine, sans circulation : pas de transfert sortant.
         if ($status === self::STATUS_REJETE
             && $this->isHeldByInitiatingService()
@@ -400,6 +408,7 @@ class Formulaire extends Model
             'initiating_service_code' => $this->initiatingServiceCode(),
             'last_decision_chef_service_code' => $this->last_decision_chef_service_code,
             'sent_to_chef_at' => $this->sent_to_chef_at?->toIso8601String(),
+            'transfer_requires_secretary_edit' => (bool) $this->transfer_requires_secretary_edit,
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }

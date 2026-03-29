@@ -18,7 +18,19 @@ class FormulairePolicy
             return false;
         }
 
-        return $user->sameServiceAsFormulaire($formulaire);
+        if (! $user->sameServiceAsFormulaire($formulaire)) {
+            return false;
+        }
+
+        // Dossiers saisis par le secrétariat : visibles par le chef seulement après « Envoyer au chef ».
+        // Dossiers créés par le chef (envoi secrétariat) : visibles sans cette étape.
+        if ($user->role === 'chef_de_service' && $formulaire->sent_to_chef_at === null) {
+            if ((int) $formulaire->created_by_user_id !== (int) $user->id) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function create(User $user): bool
@@ -88,6 +100,10 @@ class FormulairePolicy
         }
 
         if (! $user->sameServiceAsFormulaire($formulaire)) {
+            return false;
+        }
+
+        if ($formulaire->sent_to_chef_at === null) {
             return false;
         }
 

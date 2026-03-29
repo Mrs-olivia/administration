@@ -194,13 +194,15 @@ class FormulaireController extends Controller
             $data['fichier'] = $request->file('fichier')->store('documents', 'public');
         }
 
-        $formulaire->update($data);
+        $formulaire->update(array_merge($data, [
+            'transfer_requires_secretary_edit' => false,
+        ]));
 
-        $this->logWorkflow($formulaire, 'secretaire_formulaire_updated', [
+        $this->logWorkflow($formulaire->fresh(), 'secretaire_formulaire_updated', [
             'updated_fields' => array_keys($data),
         ]);
 
-        return redirect()->route('secretaire.forms.index')->with('success', 'Dossier mis à jour.');
+        return redirect()->back()->with('success', 'Dossier mis à jour.');
     }
 
     public function destroy(Formulaire $formulaire): RedirectResponse
@@ -242,10 +244,12 @@ class FormulaireController extends Controller
         );
 
         $message = $alreadySentToChef
-            ? 'Une nouvelle notification a été envoyée au chef.'
-            : 'Le chef a été notifié. Le dossier reste « En attente » jusqu’à son ouverture.';
+            ? 'Le dossier a bien été envoyé au chef (notification renvoyée).'
+            : 'Le dossier a bien été envoyé au chef. Le chef a été notifié ; le dossier reste « En attente » jusqu’à son ouverture.';
 
-        return redirect()->back()->with('success', $message);
+        return redirect()
+            ->back()
+            ->with('success', $message);
     }
 
     public function archive(Formulaire $formulaire): RedirectResponse
@@ -325,7 +329,7 @@ class FormulaireController extends Controller
         $newRef = $formulaire->reference;
 
         return redirect()
-            ->back()
+            ->route('secretaire.forms.index')
             ->with(
                 'success',
                 'Dossier transmis au service « '.$label.' ». Nouvelle référence : '.$newRef.'. Vous pouvez prévenir le chef depuis la fiche si besoin.'

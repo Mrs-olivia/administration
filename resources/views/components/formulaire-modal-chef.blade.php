@@ -1,3 +1,6 @@
+@php
+    $servicesChefModal = config('administration.services', []);
+@endphp
 <div id="createChefModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-xl p-6">
         <div class="flex justify-between items-center mb-4">
@@ -22,15 +25,24 @@
                     $chefPeek = $chefService ? \App\Models\Formulaire::peekNextNumeroOrdre($chefService, $chefAnnee) : null;
                 @endphp
                 <div class="rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50/80 dark:bg-blue-950/30 p-3 text-sm">
-                    <p class="font-medium text-gray-800 dark:text-gray-100">Référence (service et numéro automatiques)</p>
+                    <p class="font-medium text-gray-800 dark:text-gray-100">Référence (attribuée automatiquement)</p>
                     @if ($chefService)
+                        <input type="hidden" name="service_code" value="{{ $chefService }}" />
                         <p class="mt-1 text-gray-700 dark:text-gray-300">
-                            Service : <strong>{{ config('administration.services')[$chefService] ?? $chefService }}</strong>
+                            Service : <strong>{{ $servicesChefModal[$chefService] ?? $chefService }}</strong>
+                            (code <code class="text-xs">{{ $chefService }}</code>)
                         </p>
-                        <p class="mt-1 font-mono text-sm font-semibold text-blue-900 dark:text-blue-200">
-                            Prochain numéro indicatif : {{ $chefService }}/{{ $chefAnnee }}-{{ str_pad((string) $chefPeek, 4, '0', STR_PAD_LEFT) }}
-                        </p>
-                        <input type="hidden" name="annee" value="{{ $chefAnnee }}" />
+                        <div class="mt-2 grid grid-cols-2 gap-3 items-end">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Année</label>
+                                <input type="hidden" name="annee" value="{{ $chefAnnee }}" />
+                                <p class="mt-1 text-sm text-gray-800 dark:text-gray-200">{{ $chefAnnee }}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">N° d’ordre (indicatif)</p>
+                                <p class="mt-1 font-mono text-sm font-semibold text-blue-900 dark:text-blue-200">{{ $chefService }}/{{ $chefAnnee }}-{{ str_pad((string) $chefPeek, 4, '0', STR_PAD_LEFT) }}</p>
+                            </div>
+                        </div>
                     @else
                         <p class="mt-1 text-amber-800 dark:text-amber-200 text-xs">
                             Votre compte n’est pas rattaché à un service. Contactez l’administrateur — vous ne pourrez pas enregistrer de formulaire.
@@ -50,12 +62,12 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Date réception</label>
-                        <input name="date_reception" type="date" value="{{ old('date_reception') }}"
+                        <input id="date_reception_chef_modal" name="date_reception" type="date" value="{{ old('date_reception') }}"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Date échéance</label>
-                        <input name="date_echeance" type="date" value="{{ old('date_echeance') }}"
+                        <input id="date_echeance_chef_modal" name="date_echeance" type="date" value="{{ old('date_echeance') }}"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                     </div>
                 </div>
@@ -105,6 +117,19 @@
         const form = createModal?.querySelector('form');
         const typeDocumentSelect = document.getElementById('type_document_chef_modal');
         const autreTypeDocumentInput = document.getElementById('autre_type_document_chef_modal');
+        const dateReceptionChef = document.getElementById('date_reception_chef_modal');
+        const dateEcheanceChef = document.getElementById('date_echeance_chef_modal');
+        const dateOrderMsgChef = 'Impossible d\'avoir une date d\'échéance inférieure à la date de réception.';
+
+        const syncEcheanceMinChef = () => {
+            const r = dateReceptionChef?.value;
+            if (dateEcheanceChef) {
+                dateEcheanceChef.min = r || '';
+                if (r && dateEcheanceChef.value && dateEcheanceChef.value < r) {
+                    dateEcheanceChef.value = r;
+                }
+            }
+        };
 
         if (!openModalButton || !createModal) return;
 
@@ -128,12 +153,26 @@
             createModal.classList.remove('hidden');
             createModal.classList.add('flex');
             toggleAutreField();
+            syncEcheanceMinChef();
         }
+
+        dateReceptionChef?.addEventListener('change', syncEcheanceMinChef);
+        dateReceptionChef?.addEventListener('input', syncEcheanceMinChef);
 
         openModalButton.addEventListener('click', () => {
             createModal.classList.remove('hidden');
             createModal.classList.add('flex');
             toggleAutreField();
+            syncEcheanceMinChef();
+        });
+
+        form?.addEventListener('submit', function(e) {
+            const r = dateReceptionChef?.value;
+            const ec = dateEcheanceChef?.value;
+            if (r && ec && ec < r) {
+                e.preventDefault();
+                alert(dateOrderMsgChef);
+            }
         });
 
         const close = () => {

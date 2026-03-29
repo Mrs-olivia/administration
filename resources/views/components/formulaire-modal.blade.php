@@ -69,12 +69,12 @@
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Date réception</label>
-                        <input name="date_reception" type="date" value="{{ old('date_reception') }}"
+                        <input id="date_reception_modal" name="date_reception" type="date" value="{{ old('date_reception') }}"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Date échéance</label>
-                        <input name="date_echeance" type="date" value="{{ old('date_echeance') }}"
+                        <input id="date_echeance_modal" name="date_echeance" type="date" value="{{ old('date_echeance') }}"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                     </div>
                 </div>
@@ -127,6 +127,19 @@
         const anneeInput = document.getElementById('annee_modal');
         const refPreview = document.getElementById('ref_preview_modal');
         const nextRefUrl = @json(route('secretaire.forms.nextReference'));
+        const dateReceptionInput = document.getElementById('date_reception_modal');
+        const dateEcheanceInput = document.getElementById('date_echeance_modal');
+        const dateOrderMsg = 'Impossible d\'avoir une date d\'échéance inférieure à la date de réception.';
+
+        const syncEcheanceMinModal = () => {
+            const r = dateReceptionInput?.value;
+            if (dateEcheanceInput) {
+                dateEcheanceInput.min = r || '';
+                if (r && dateEcheanceInput.value && dateEcheanceInput.value < r) {
+                    dateEcheanceInput.value = r;
+                }
+            }
+        };
 
         if (!openModalButton || !createModal) return;
 
@@ -167,7 +180,11 @@
             createModal.classList.add('flex');
             toggleAutreField();
             refreshReferencePreview();
+            syncEcheanceMinModal();
         }
+
+        dateReceptionInput?.addEventListener('change', syncEcheanceMinModal);
+        dateReceptionInput?.addEventListener('input', syncEcheanceMinModal);
 
         if (typeDocumentSelect) {
             typeDocumentSelect.addEventListener('change', toggleAutreField);
@@ -183,6 +200,16 @@
             createModal.classList.add('flex');
             toggleAutreField();
             refreshReferencePreview();
+            syncEcheanceMinModal();
+        });
+
+        form?.addEventListener('submit', function(e) {
+            const r = dateReceptionInput?.value;
+            const ec = dateEcheanceInput?.value;
+            if (r && ec && ec < r) {
+                e.preventDefault();
+                alert(dateOrderMsg);
+            }
         });
 
         const close = () => {

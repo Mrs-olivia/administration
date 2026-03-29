@@ -38,4 +38,18 @@ class StoreformulaireRequest extends FormRequest
             'status' => ['prohibited'],
         ];
     }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            $reception = $this->input('date_reception');
+            $echeance = $this->input('date_echeance');
+            if (filled($reception) && filled($echeance) && strtotime((string) $echeance) < strtotime((string) $reception)) {
+                $validator->errors()->add(
+                    'date_echeance',
+                    'Impossible d\'avoir une date d\'échéance inférieure à la date de réception.'
+                );
+            }
+        });
+    }
 }

@@ -223,6 +223,9 @@
                                                     <button type="submit" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800 hover:bg-red-200">Supprimer</button>
                                                 </form>
                                             @endcan
+                                            @if($formulaire->transfer_requires_secretary_edit)
+                                                <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100 max-w-[10rem]" title="Modifiez le dossier au moins une fois avant un nouveau transfert (rejet du chef après circuit inter-services).">Transfert bloqué — éditer</span>
+                                            @endif
                                             @can('transfer', $formulaire)
                                                 @php
                                                     $allowedTransferCodes = [];

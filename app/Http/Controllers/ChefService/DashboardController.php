@@ -21,17 +21,26 @@ class DashboardController extends Controller
         ];
 
         $user = auth()->user();
+        $userId = (int) $user->id;
         $scope = function ($q) use ($user) {
             if ($user->service_code) {
                 $q->where('service_code', $user->service_code);
             }
         };
 
+        $sentScope = function ($q) use ($scope, $userId): void {
+            $scope($q);
+            $q->where(function ($inner) use ($userId): void {
+                $inner->whereNotNull('sent_to_chef_at')
+                    ->orWhere('created_by_user_id', $userId);
+            });
+        };
+
         $counts = [];
         foreach (array_keys($statusLabels) as $status) {
             $counts[$status] = Formulaire::query()
                 ->where('status', $status)
-                ->tap($scope)
+                ->tap($sentScope)
                 ->count();
         }
 
@@ -40,7 +49,7 @@ class DashboardController extends Controller
                 Formulaire::STATUS_EN_ATTENTE,
                 Formulaire::STATUS_EN_COURS,
             ])
-            ->tap($scope)
+            ->tap($sentScope)
             ->count();
 
         $recent = Formulaire::query()
@@ -49,7 +58,7 @@ class DashboardController extends Controller
                 Formulaire::STATUS_TRAITE,
                 Formulaire::STATUS_REJETE,
             ])
-            ->tap($scope)
+            ->tap($sentScope)
             ->latest()
             ->limit(8)
             ->get();

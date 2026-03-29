@@ -27,7 +27,14 @@ class FormulaireController extends Controller
             Formulaire::STATUS_ARCHIVE,
         ];
 
-        $query = Formulaire::query()->latest();
+        $userId = (int) $request->user()->id;
+
+        $query = Formulaire::query()
+            ->where(function ($q) use ($userId): void {
+                $q->whereNotNull('sent_to_chef_at')
+                    ->orWhere('created_by_user_id', $userId);
+            })
+            ->latest();
 
         if ($request->user()->service_code) {
             $query->where('service_code', $request->user()->service_code);
@@ -262,6 +269,9 @@ class FormulaireController extends Controller
 
         $formulaire->status = Formulaire::STATUS_REJETE;
         $formulaire->last_decision_chef_service_code = trim((string) $formulaire->service_code);
+        if ($formulaire->isHeldByInitiatingService() && $formulaire->hasTransferTrace()) {
+            $formulaire->transfer_requires_secretary_edit = true;
+        }
         $formulaire->save();
 
         event(new DossierMisAJour($formulaire->fresh()));
