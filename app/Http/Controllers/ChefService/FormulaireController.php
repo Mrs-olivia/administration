@@ -29,6 +29,10 @@ class FormulaireController extends Controller
 
         $query = Formulaire::query()->latest();
 
+        if ($request->user()->service_code) {
+            $query->where('service_code', $request->user()->service_code);
+        }
+
         $status = $request->query('status');
         if ($status !== null) {
             $statusInt = (int) $status;
@@ -62,6 +66,10 @@ class FormulaireController extends Controller
             ->where('created_by_user_id', $request->user()->id)
             ->latest();
 
+        if ($request->user()->service_code) {
+            $query->where('service_code', $request->user()->service_code);
+        }
+
         $status = $request->query('status');
         if ($status !== null) {
             $statusInt = (int) $status;
@@ -79,6 +87,19 @@ class FormulaireController extends Controller
     {
         $this->authorize('create', Formulaire::class);
 
+        if (! $request->user()->service_code) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('modal_error', true);
+        }
+
+        $annee = (int) $request->input('annee', date('Y'));
+        $request->merge([
+            'service_code' => $request->user()->service_code,
+            'annee' => $annee,
+        ]);
+
         $data = $request->validated();
 
         if ($request->type_document === 'Autre' && $request->filled('autre_type_document')) {
@@ -91,15 +112,16 @@ class FormulaireController extends Controller
 
         unset($data['status'], $data['autre_type_document']);
 
+        $data['numero_ordre'] = Formulaire::nextNumeroOrdre($data['service_code'], (int) $data['annee']);
         $data['status'] = Formulaire::STATUS_EN_ATTENTE;
         $data['created_by_user_id'] = $request->user()->id;
 
         $formulaire = Formulaire::create($data);
 
-        // Notifier le secrétariat.
-        User::role('secretaire')->get()->each(function (User $secretaire) use ($formulaire): void {
-            $secretaire->notify(new DossierEnvoyeAuSecretaire($formulaire));
-        });
+        User::secretairesNotifiablesPourService($formulaire->service_code)
+            ->each(function (User $secretaire) use ($formulaire): void {
+                $secretaire->notify(new DossierEnvoyeAuSecretaire($formulaire));
+            });
 
         event(new DossierMisAJour($formulaire->fresh()));
 
@@ -140,15 +162,17 @@ class FormulaireController extends Controller
 
         $texte = trim((string) $request->input('annotation', ''));
         if ($texte !== '') {
-            $formulaire->annotation_chef = $texte;
+            $serviceCode = (string) $request->user()->service_code;
+            $formulaire->appendChefAnnotationEntry($serviceCode, (int) $request->user()->id, 'note', $texte);
             $formulaire->save();
             event(new DossierMisAJour($formulaire->fresh()));
 
             $this->logWorkflow($formulaire, 'chef_formulaire_annotated', [
+                'service_code' => $serviceCode,
                 'annotation_length' => mb_strlen($texte),
             ]);
 
-            return redirect()->route('chefService.forms.show', $formulaire)->with('success', 'Annotation enregistrée.');
+            return redirect()->route('chefService.forms.show', $formulaire)->with('success', 'Annotation enregistrée (préfixée ['.$serviceCode.']).');
         }
 
         return redirect()->route('chefService.forms.show', $formulaire)->with('info', 'Saisissez un texte pour enregistrer une annotation.');
@@ -172,19 +196,32 @@ class FormulaireController extends Controller
         ]);
 
         $final = trim((string) $request->input('commentaire', ''));
+        $serviceCode = (string) $request->user()->service_code;
+        $userId = (int) $request->user()->id;
+
         if ($final !== '') {
-            $formulaire->annotation_chef = $final;
-        } elseif (! $hasPrior) {
+            $formulaire->appendChefAnnotationEntry($serviceCode, $userId, 'validation', $final);
+        } elseif ($hasPrior) {
+            $formulaire->appendChefAnnotationEntry(
+                $serviceCode,
+                $userId,
+                'validation',
+                'Décision validée ; annotations et commentaires précédents conservés.'
+            );
+        } else {
             return redirect()->back()->withErrors(['commentaire' => 'Veuillez saisir un commentaire.']);
         }
 
         $formulaire->status = Formulaire::STATUS_TRAITE;
+        $formulaire->last_decision_chef_service_code = trim((string) $formulaire->service_code);
         $formulaire->save();
 
         event(new DossierMisAJour($formulaire->fresh()));
         $this->notifierSecretaire($formulaire, 'valide');
 
-        $this->logWorkflow($formulaire, 'chef_formulaire_validated');
+        $this->logWorkflow($formulaire, 'chef_formulaire_validated', [
+            'service_code' => $serviceCode,
+        ]);
 
         return redirect()->route('chefService.forms.show', $formulaire)->with('success', 'Dossier validé. Le secrétariat a été notifié.');
     }
@@ -207,31 +244,42 @@ class FormulaireController extends Controller
         ]);
 
         $final = trim((string) $request->input('commentaire', ''));
+        $serviceCode = (string) $request->user()->service_code;
+        $userId = (int) $request->user()->id;
+
         if ($final !== '') {
-            $formulaire->annotation_chef = $final;
-        } elseif (! $hasPrior) {
+            $formulaire->appendChefAnnotationEntry($serviceCode, $userId, 'rejet', $final);
+        } elseif ($hasPrior) {
+            $formulaire->appendChefAnnotationEntry(
+                $serviceCode,
+                $userId,
+                'rejet',
+                'Rejet ; annotations précédentes conservées comme motif.'
+            );
+        } else {
             return redirect()->back()->withErrors(['commentaire' => 'Veuillez saisir le motif de rejet.']);
         }
 
         $formulaire->status = Formulaire::STATUS_REJETE;
+        $formulaire->last_decision_chef_service_code = trim((string) $formulaire->service_code);
         $formulaire->save();
 
         event(new DossierMisAJour($formulaire->fresh()));
         $this->notifierSecretaire($formulaire, 'rejete');
 
-        $this->logWorkflow($formulaire, 'chef_formulaire_rejected');
+        $this->logWorkflow($formulaire, 'chef_formulaire_rejected', [
+            'service_code' => $serviceCode,
+        ]);
 
         return redirect()->route('chefService.forms.show', $formulaire)->with('success', 'Dossier rejeté. Le secrétariat a été notifié.');
     }
 
     private function notifierSecretaire(Formulaire $formulaire, string $type): void
     {
-        if (! $formulaire->created_by_user_id) {
-            return;
-        }
-
-        $auteur = User::find($formulaire->created_by_user_id);
-        $auteur?->notify(new DecisionChefSurDossier($formulaire, $type));
+        User::secretairesNotifiablesPourService($formulaire->service_code)
+            ->each(function (User $secretaire) use ($formulaire, $type): void {
+                $secretaire->notify(new DecisionChefSurDossier($formulaire, $type));
+            });
     }
 
     private function logWorkflow(Formulaire $formulaire, string $action, array $details = []): void

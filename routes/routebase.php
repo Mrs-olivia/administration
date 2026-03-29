@@ -28,7 +28,7 @@ Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
 });
 
 // ------------------ SECRÉTAIRE ------------------
-Route::prefix('secretaire')->middleware('auth')->group(function () {
+Route::prefix('secretaire')->middleware(['auth', 'staff.service'])->group(function () {
     Route::get('/dashboard', [SecretaireDashboardController::class, 'index'])
         ->middleware('permission:dashboard.secretaire')
         ->name('secretaire.dashboard');
@@ -36,6 +36,9 @@ Route::prefix('secretaire')->middleware('auth')->group(function () {
     Route::get('/forms/poll', [SecretaireController::class, 'poll'])
         ->middleware('permission:formulaires.view')
         ->name('secretaire.forms.poll');
+    Route::get('/forms/next-reference', [SecretaireController::class, 'nextReferencePreview'])
+        ->middleware('permission:formulaires.create')
+        ->name('secretaire.forms.nextReference');
     Route::get('/forms/{formulaire}/poll', [SecretaireController::class, 'pollShow'])
         ->middleware('permission:formulaires.view')
         ->name('secretaire.forms.pollShow');
@@ -64,6 +67,9 @@ Route::prefix('secretaire')->middleware('auth')->group(function () {
     Route::post('/forms/{formulaire}/archive', [SecretaireController::class, 'archive'])
         ->middleware('permission:formulaires.edit')
         ->name('secretaire.forms.archive');
+    Route::post('/forms/{formulaire}/transfer', [SecretaireController::class, 'transfer'])
+        ->middleware('permission:formulaires.edit')
+        ->name('secretaire.forms.transfer');
 
     Route::get('/workflow-logs', [SecretaireWorkflowLogController::class, 'index'])
         ->middleware('permission:formulaires.view')
@@ -71,7 +77,7 @@ Route::prefix('secretaire')->middleware('auth')->group(function () {
 });
 
 // ------------------ CHEF DE SERVICE ------------------
-Route::prefix('chefService')->middleware('auth')->group(function () {
+Route::prefix('chefService')->middleware(['auth', 'staff.service'])->group(function () {
     Route::get('/dashboard', [ChefServiceDashboardController::class, 'index'])
         ->middleware('permission:dashboard.chef')
         ->name('chefService.dashboard');

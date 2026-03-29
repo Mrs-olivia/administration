@@ -20,18 +20,51 @@ class DashboardController extends Controller
             Formulaire::STATUS_ARCHIVE => 'Archivé',
         ];
 
+        $user = auth()->user();
+        $scope = function ($q) use ($user) {
+            if ($user->service_code) {
+                $q->where('service_code', $user->service_code);
+            }
+        };
+
         $counts = [];
         foreach (array_keys($statusLabels) as $status) {
-            $counts[$status] = Formulaire::where('status', $status)->count();
+            $counts[$status] = Formulaire::query()
+                ->where('status', $status)
+                ->tap($scope)
+                ->count();
         }
 
         $total = array_sum($counts);
 
+        $transferredTotal = Formulaire::query()
+            ->tap($scope)
+            ->where('transfers_count', '>', 0)
+            ->count();
+
         $recent = Formulaire::query()
+            ->tap($scope)
             ->latest()
             ->limit(8)
             ->get();
 
-        return view('secretaire.dashboard', compact('statusLabels', 'counts', 'total', 'recent'));
+        $transferredRecent = Formulaire::query()
+            ->tap($scope)
+            ->where('transfers_count', '>', 0)
+            ->orderByDesc('last_transferred_at')
+            ->limit(15)
+            ->get();
+
+        $pollDashboardIds = $recent->pluck('id')->merge($transferredRecent->pluck('id'))->unique()->values();
+
+        return view('secretaire.dashboard', compact(
+            'statusLabels',
+            'counts',
+            'total',
+            'recent',
+            'transferredTotal',
+            'transferredRecent',
+            'pollDashboardIds',
+        ));
     }
 }

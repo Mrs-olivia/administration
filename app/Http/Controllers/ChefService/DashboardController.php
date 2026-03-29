@@ -20,15 +20,28 @@ class DashboardController extends Controller
             Formulaire::STATUS_ARCHIVE => 'Archivé',
         ];
 
+        $user = auth()->user();
+        $scope = function ($q) use ($user) {
+            if ($user->service_code) {
+                $q->where('service_code', $user->service_code);
+            }
+        };
+
         $counts = [];
         foreach (array_keys($statusLabels) as $status) {
-            $counts[$status] = Formulaire::where('status', $status)->count();
+            $counts[$status] = Formulaire::query()
+                ->where('status', $status)
+                ->tap($scope)
+                ->count();
         }
 
-        $aTraiter = Formulaire::whereIn('status', [
-            Formulaire::STATUS_EN_ATTENTE,
-            Formulaire::STATUS_EN_COURS,
-        ])->count();
+        $aTraiter = Formulaire::query()
+            ->whereIn('status', [
+                Formulaire::STATUS_EN_ATTENTE,
+                Formulaire::STATUS_EN_COURS,
+            ])
+            ->tap($scope)
+            ->count();
 
         $recent = Formulaire::query()
             ->whereIn('status', [
@@ -36,6 +49,7 @@ class DashboardController extends Controller
                 Formulaire::STATUS_TRAITE,
                 Formulaire::STATUS_REJETE,
             ])
+            ->tap($scope)
             ->latest()
             ->limit(8)
             ->get();

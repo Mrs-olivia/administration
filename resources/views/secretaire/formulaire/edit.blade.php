@@ -36,32 +36,10 @@
                     @endif
 
                     <div class="grid grid-cols-1 gap-6">
-                        <!-- Service Code, Année, Numéro Ordre -->
-                        <div class="grid grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Service Code</label>
-                                <input name="service_code" type="text" required maxlength="10" value="{{ old('service_code', $formulaire->service_code) }}"
-                                    class="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2" />
-                                @error('service_code')
-                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                                @enderror
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Année</label>
-                                <input name="annee" type="number" required min="2000" max="2100" value="{{ old('annee', $formulaire->annee) }}"
-                                    class="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2" />
-                                @error('annee')
-                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                                @enderror
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Numéro Ordre</label>
-                                <input name="numero_ordre" type="number" required min="1" value="{{ old('numero_ordre', $formulaire->numero_ordre) }}"
-                                    class="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2" />
-                                @error('numero_ordre')
-                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                                @enderror
-                            </div>
+                        <div class="rounded-lg border border-gray-200 dark:border-gray-600 p-4 bg-gray-50 dark:bg-gray-900/40">
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Référence (non modifiable)</p>
+                            <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ $formulaire->reference }}</p>
+                            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ $formulaire->serviceLabel() }} — année {{ $formulaire->annee }}, n° {{ $formulaire->numero_ordre }}</p>
                         </div>
 
                         <!-- Expéditeur -->

@@ -39,5 +39,7 @@
                 </main>
             </div>
         </div>
+
+        <x-action-denied-modal />
     </body>
 </html>

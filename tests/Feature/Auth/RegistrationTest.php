@@ -41,12 +41,14 @@ class RegistrationTest extends TestCase
                 'password' => 'password',
                 'password_confirmation' => 'password',
                 'role' => 'secretaire',
+                'service_code' => 'SVC1',
             ])
             ->assertRedirect(route('admin.users.index'));
 
         $this->assertDatabaseHas('users', [
             'email' => 'nouveau.secretaire@example.com',
             'role' => 'secretaire',
+            'service_code' => 'SVC1',
         ]);
     }
 }

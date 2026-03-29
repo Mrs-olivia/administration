@@ -1,3 +1,11 @@
+@props([
+    'assignedService' => null,
+])
+
+@php
+    $services = config('administration.services', []);
+@endphp
+
 <div id="createModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-xl p-6">
         <div class="flex justify-between items-center mb-4">
@@ -16,21 +24,35 @@
                 </div>
             @endif
             <div class="grid grid-cols-1 gap-4">
-                <div class="grid grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Service Code</label>
-                        <input name="service_code" type="text" required maxlength="10" value="{{ old('service_code') }}"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Année</label>
-                        <input name="annee" type="number" required min="2000" max="2100" value="{{ old('annee') }}"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Numéro Ordre</label>
-                        <input name="numero_ordre" type="number" required min="1" value="{{ old('numero_ordre') }}"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                <div class="rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50/80 dark:bg-blue-950/30 p-3 text-sm">
+                    <p class="font-medium text-gray-800 dark:text-gray-100">Référence (attribuée automatiquement)</p>
+                    @if ($assignedService)
+                        <input type="hidden" name="service_code" id="service_code_modal" value="{{ $assignedService }}" />
+                        <p class="mt-1 text-gray-700 dark:text-gray-300">
+                            Service : <strong>{{ $services[$assignedService] ?? $assignedService }}</strong>
+                            (code <code class="text-xs">{{ $assignedService }}</code>)
+                        </p>
+                    @else
+                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mt-2">Service</label>
+                        <select name="service_code" id="service_code_modal" required
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <option value="">— Choisir —</option>
+                            @foreach ($services as $code => $label)
+                                <option value="{{ $code }}" @selected(old('service_code') === $code)>{{ $label }} ({{ $code }})</option>
+                            @endforeach
+                        </select>
+                    @endif
+                    <div class="mt-2 grid grid-cols-2 gap-3 items-end">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Année</label>
+                            <input type="number" name="annee" id="annee_modal" min="2000" max="2100"
+                                value="{{ old('annee', (int) date('Y')) }}"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">N° d’ordre</p>
+                            <p id="ref_preview_modal" class="mt-1 font-mono text-sm font-semibold text-blue-900 dark:text-blue-200">—</p>
+                        </div>
                     </div>
                 </div>
                 <div>
@@ -72,7 +94,7 @@
                             <option value="Registre" {{ old('type_document') == 'Registre' ? 'selected' : '' }}>Registre</option>
                             <option value="Autre" {{ old('type_document') == 'Autre' ? 'selected' : '' }}>Autre</option>
                         </select>
-                        <input type="text" id="autre_type_document_modal" name="autre_type_document" placeholder="Précisez le type de document" 
+                        <input type="text" id="autre_type_document_modal" name="autre_type_document" placeholder="Précisez le type de document"
                             class="mt-2 hidden block w-full rounded-md border-gray-300 shadow-sm" value="{{ old('autre_type_document') }}" />
                     </div>
                     <div>
@@ -101,18 +123,13 @@
         const form = createModal?.querySelector('form');
         const typeDocumentSelect = document.getElementById('type_document_modal');
         const autreTypeDocumentInput = document.getElementById('autre_type_document_modal');
+        const serviceSelect = document.getElementById('service_code_modal');
+        const anneeInput = document.getElementById('annee_modal');
+        const refPreview = document.getElementById('ref_preview_modal');
+        const nextRefUrl = @json(route('secretaire.forms.nextReference'));
 
         if (!openModalButton || !createModal) return;
 
-        // Si la requête POST a échoué (validation), on réouvre le modal pour afficher les erreurs.
-        const shouldShowOnLoad = @json($errors->any());
-        if (shouldShowOnLoad) {
-            createModal.classList.remove('hidden');
-            createModal.classList.add('flex');
-            toggleAutreField();
-        }
-
-        // Gérer l'affichage/masquage du champ "Autre"
         const toggleAutreField = () => {
             if (typeDocumentSelect?.value === 'Autre') {
                 autreTypeDocumentInput?.classList.remove('hidden');
@@ -123,26 +140,65 @@
             }
         };
 
+        async function refreshReferencePreview() {
+            if (!refPreview) return;
+            const sc = serviceSelect?.tagName === 'SELECT' ? serviceSelect.value : serviceSelect?.value;
+            const annee = anneeInput?.value;
+            if (!sc || !annee) {
+                refPreview.textContent = '—';
+                return;
+            }
+            try {
+                const u = new URL(nextRefUrl, window.location.origin);
+                u.searchParams.set('service_code', sc);
+                u.searchParams.set('annee', annee);
+                const res = await fetch(u.toString(), { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                refPreview.textContent = data.reference_preview;
+            } catch {
+                refPreview.textContent = '—';
+            }
+        }
+
+        const shouldShowOnLoad = @json($errors->any());
+        if (shouldShowOnLoad) {
+            createModal.classList.remove('hidden');
+            createModal.classList.add('flex');
+            toggleAutreField();
+            refreshReferencePreview();
+        }
+
         if (typeDocumentSelect) {
             typeDocumentSelect.addEventListener('change', toggleAutreField);
-            // Initialiser à l'ouverture du modal
             toggleAutreField();
         }
+
+        serviceSelect?.addEventListener('change', refreshReferencePreview);
+        anneeInput?.addEventListener('change', refreshReferencePreview);
+        anneeInput?.addEventListener('input', refreshReferencePreview);
 
         openModalButton.addEventListener('click', () => {
             createModal.classList.remove('hidden');
             createModal.classList.add('flex');
             toggleAutreField();
+            refreshReferencePreview();
         });
-        
+
         const close = () => {
             createModal.classList.remove('flex');
             createModal.classList.add('hidden');
-            // Réinitialiser le formulaire
             form?.reset();
             toggleAutreField();
-        }
-        
+            if (serviceSelect?.tagName === 'SELECT') {
+                serviceSelect.value = '';
+            }
+            if (anneeInput) {
+                anneeInput.value = @json((string) (int) date('Y'));
+            }
+            if (refPreview) refPreview.textContent = '—';
+        };
+
         closeModalButton?.addEventListener('click', close);
         cancelModal?.addEventListener('click', close);
     })();

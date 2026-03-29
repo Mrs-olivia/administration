@@ -14,14 +14,23 @@
             }, 5000);
         </script>
     @endif
-    @if (session('error'))
-        <div class="flex p-4 mb-4 text-sm rounded-lg bg-red-100 text-red-800 border border-red-400">
-            {{ session('error') }}
-        </div>
-    @endif
-
     <section id="pageWrapper" class="bg-gray-50 dark:bg-gray-900 p-3 sm:p-5 transition-all duration-300">
         <div class="mx-auto max-w-screen-xl px-4 lg:px-12">
+            <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                <p class="font-medium">Pourquoi un dossier peut « disparaître » de votre liste</p>
+                <ul class="mt-2 list-disc space-y-1 pl-5 text-amber-900/90 dark:text-amber-200/90">
+                    <li>S’il a été <strong>transféré vers un autre service</strong>, il ne figure plus ici : il est suivi par le secrétariat de ce service (référence et origine conservées sur la fiche côté destinataire).</li>
+                    <li>Le bouton ou le menu <strong>« Transmis » / Dossiers transmis</strong> n’affiche que les dossiers ayant déjà été retransmis au moins une fois — pas toute la liste.</li>
+                    <li>Les <strong>filtres par statut</strong> (menu « Filtrer par statut ») limitent aussi les résultats.</li>
+                    <li>Un dossier en <strong>relais</strong> ne peut pas être modifié ni archivé par le secrétariat relais : après décision du chef, vous pouvez le <strong>transférer vers un autre service</strong> ou le <strong>renvoyer au service initiateur</strong> ; l’archivage final reste au service d’origine après une <strong>dernière décision chef</strong> sur place.</li>
+                </ul>
+            </div>
+            @if(request()->boolean('transferred'))
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-teal-200 bg-teal-50/90 px-4 py-3 text-sm text-teal-900 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-100">
+                    <span>Filtre actif : <strong>dossiers ayant été transmis au moins une fois</strong> vers un autre service (trace conservée).</span>
+                    <a href="{{ route('secretaire.forms.index', request()->except(['transferred', 'page'])) }}" class="shrink-0 font-medium text-teal-800 underline hover:no-underline dark:text-teal-300">Afficher tous les dossiers</a>
+                </div>
+            @endif
             <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">Les dossiers partagent une <strong>source unique</strong> en base : le statut et le commentaire chef sont les mêmes pour le secrétariat et le chef. Actualisation automatique ci-dessous.</p>
             <div class="bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-hidden"
                  x-data="secretaireDossierPollBatch({ pollUrl: '{{ route('secretaire.forms.poll') }}', ids: @json($formulaires->pluck('id')->values()) })">
@@ -47,6 +56,11 @@
                     </div>
                     <div
                         class="w-full md:w-auto flex flex-col md:flex-row space-y-2 md:space-y-0 items-stretch md:items-center justify-end md:space-x-3 flex-shrink-0">
+                        <a href="{{ route('secretaire.forms.index', array_merge(request()->except(['page']), ['transferred' => 1])) }}"
+                           class="flex items-center justify-center text-teal-900 bg-teal-100 hover:bg-teal-200 focus:ring-4 focus:ring-teal-300 font-medium rounded-lg text-sm px-4 py-2 focus:outline-none dark:bg-teal-900/50 dark:text-teal-100 dark:hover:bg-teal-900 transition-colors {{ request()->boolean('transferred') ? 'ring-2 ring-teal-500' : '' }}">
+                            <svg class="h-3.5 w-3.5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                            Transmis
+                        </a>
                         <button id="openModalButton" type="button"
                             class="flex items-center justify-center text-white bg-blue-950 hover:bg-blue-900 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 focus:outline-none dark:bg-blue-800 dark:hover:bg-blue-700 dark:focus:ring-blue-900 transition-colors">
                             <svg class="h-3.5 w-3.5 mr-2" fill="currentColor" viewbox="0 0 20 20"
@@ -124,6 +138,7 @@
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                             <tr>
                                 <th scope="col" class="px-4 py-3">Référence</th>
+                                <th scope="col" class="px-4 py-3">Transferts</th>
                                 <th scope="col" class="px-4 py-3">expediteur</th>
                                 <th scope="col" class="px-4 py-3">objet</th>
                                 <th scope="col" class="px-4 py-3">type_document</th>
@@ -131,6 +146,7 @@
                                 <th scope="col" class="px-4 py-3">date_echeance</th>
                                 <th scope="col" class="px-4 py-3">Fichier</th>
                                 <th scope="col" class="px-4 py-3">Statut</th>
+                                <th scope="col" class="px-4 py-3">Service</th>
 
                                 <th scope="col" class="px-4 py-3">
                                     <span class="sr-only">Actions</span>
@@ -142,7 +158,20 @@
                                 <tr class="border-b dark:border-gray-700">
                                     <th scope="row"
                                         class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                                        {{ $formulaire->reference }}</th>
+                                        <span class="block">{{ $formulaire->reference }}</span>
+                                        @if($formulaire->isRelayServiceHold())
+                                            <span class="mt-0.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900 dark:bg-amber-900/40 dark:text-amber-100" title="Dossier en relais : pas d’édition ni archivage ici ; transfert possible vers un autre service ou retour à l’initiateur après décision chef.">Relais</span>
+                                        @endif
+                                    </th>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        @if($formulaire->hasTransferTrace())
+                                            <span class="inline-flex items-center rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-900 dark:bg-teal-900/50 dark:text-teal-100" title="Dernier transfert le {{ $formulaire->last_transferred_at?->format('d/m/Y H:i') }}">
+                                                {{ $formulaire->transfers_count }}×
+                                            </span>
+                                        @else
+                                            <span class="text-gray-400">—</span>
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-3">{{ $formulaire->expediteur }}</td>
                                     <td class="px-4 py-3">{{ $formulaire->objet }}</td>
                                     <td class="px-4 py-3">{{ $formulaire->type_document }}</td>
@@ -168,6 +197,10 @@
                                             {{ $formulaire->statusLabel() }}
                                         </span>
                                     </td>
+                                    <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-300 max-w-[10rem]">
+                                        <span class="font-mono">{{ $formulaire->service_code }}</span>
+                                        <span class="block text-gray-500 dark:text-gray-400 truncate" title="{{ $formulaire->serviceLabel() }}">{{ $formulaire->serviceLabel() }}</span>
+                                    </td>
                                     <td class="px-4 py-3">
                                         <div class="flex flex-wrap gap-1 justify-end max-w-xs ms-auto">
                                             <a href="{{ route('secretaire.forms.show', $formulaire) }}" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200">Voir</a>
@@ -190,20 +223,41 @@
                                                     <button type="submit" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800 hover:bg-red-200">Supprimer</button>
                                                 </form>
                                             @endcan
+                                            @can('transfer', $formulaire)
+                                                @php
+                                                    $allowedTransferCodes = [];
+                                                    foreach (array_keys(config('administration.services', [])) as $_c) {
+                                                        if ($formulaire->isAllowedTransferTarget($_c)) {
+                                                            $allowedTransferCodes[] = $_c;
+                                                        }
+                                                    }
+                                                @endphp
+                                                @if(count($allowedTransferCodes))
+                                                    <form action="{{ route('secretaire.forms.transfer', $formulaire) }}" method="POST" class="inline flex flex-wrap items-center gap-1" onsubmit="return confirm('Transférer ce dossier vers le service sélectionné ? La référence sera recalculée et l’historique reste tracé dans les logs.');">
+                                                        @csrf
+                                                        <select name="target_service_code" required class="text-xs rounded border-gray-300 dark:bg-gray-700 dark:border-gray-600 max-w-[9rem]">
+                                                            @foreach ($allowedTransferCodes as $code)
+                                                                <option value="{{ $code }}">{{ config('administration.services')[$code] ?? $code }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                        <button type="submit" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-teal-100 text-teal-900 hover:bg-teal-200">Transférer</button>
+                                                    </form>
+                                                @endif
+                                            @endcan
                                             @can('archive', $formulaire)
                                                 <form action="{{ route('secretaire.forms.archive', $formulaire) }}" method="POST" class="inline" onsubmit="return confirm('Archiver ce dossier ?');">
                                                     @csrf
                                                     <button type="submit" class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-purple-100 text-purple-800 hover:bg-purple-200">Archiver</button>
                                                 </form>
-                                            @else
-                                                <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-400 dark:bg-gray-600 dark:text-gray-500 cursor-not-allowed" title="Vous n’avez pas l’autorisation d’archiver ce dossier">Archiver</span>
+                                            @elseif($formulaire->status !== \App\Models\Formulaire::STATUS_ARCHIVE)
+                                                <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-400 dark:bg-gray-600 dark:text-gray-500 cursor-not-allowed" title="{{ $formulaire->archiveDisabledHintForSecretaire() }}">Archiver</span>
                                             @endcan
                                         </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="9" class="px-4 py-4 text-center">Aucun dossier trouvé.</td>
+                                    <td colspan="11" class="px-4 py-4 text-center">Aucun dossier trouvé.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -216,7 +270,7 @@
         </div>
 
         <!-- Modal component -->
-        <x-formulaire-modal />
+        <x-formulaire-modal :assigned-service="auth()->user()->service_code" />
 
     </section>
 </x-app-layout>

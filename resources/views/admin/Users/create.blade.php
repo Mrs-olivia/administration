@@ -51,6 +51,18 @@
                 </div>
 
                 <div>
+                    <x-input-label for="service_code" value="Service" />
+                    <select id="service_code" name="service_code" required
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                        <option value="" disabled @selected(! old('service_code'))>— Choisir un service —</option>
+                        @foreach (config('administration.services', []) as $code => $label)
+                            <option value="{{ $code }}" @selected(old('service_code') === $code)>{{ $label }} ({{ $code }})</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Obligatoire pour secrétaire et chef (pas pour l’admin, créé au seeder).</p>
+                </div>
+
+                <div>
                     <x-input-label for="password" value="Mot de passe initial (à communiquer à l’utilisateur)" />
                     <x-text-input id="password" name="password" type="password" class="mt-1 block w-full" required autocomplete="new-password" />
                 </div>

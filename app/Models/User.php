@@ -3,18 +3,20 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasRoles;
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
+
+    use HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -25,7 +27,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role'
+        'role',
+        'service_code',
     ];
 
     /**
@@ -54,6 +57,54 @@ class User extends Authenticatable
     public function formulairesCrees(): HasMany
     {
         return $this->hasMany(Formulaire::class, 'created_by_user_id');
+    }
+
+    /** Accès transversal (ex. admin secrétariat) : pas de filtre par service. */
+    public function hasUnscopedServiceAccess(): bool
+    {
+        return $this->service_code === null || $this->service_code === '';
+    }
+
+    public function administrationServiceLabel(): ?string
+    {
+        if ($this->hasUnscopedServiceAccess()) {
+            return null;
+        }
+
+        return config('administration.services')[$this->service_code] ?? $this->service_code;
+    }
+
+    public function sameServiceAsFormulaire(Formulaire $formulaire): bool
+    {
+        if ($this->hasUnscopedServiceAccess()) {
+            return true;
+        }
+
+        return $this->service_code === $formulaire->service_code;
+    }
+
+    /**
+     * Chefs à notifier pour un dossier (même code service ; obligatoire côté comptes).
+     *
+     * @return Collection<int, User>
+     */
+    public static function chefsNotifiablesPourService(string $serviceCode): Collection
+    {
+        return static::role('chef_de_service')
+            ->where('service_code', $serviceCode)
+            ->get();
+    }
+
+    /**
+     * Secrétaires à notifier pour un service donné.
+     *
+     * @return Collection<int, User>
+     */
+    public static function secretairesNotifiablesPourService(string $serviceCode): Collection
+    {
+        return static::role('secretaire')
+            ->where('service_code', $serviceCode)
+            ->get();
     }
 
     protected static function booted(): void

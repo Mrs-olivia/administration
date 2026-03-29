@@ -23,12 +23,6 @@
             </div>
         @endif
 
-        @if(session('error'))
-            <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-800 rounded-lg dark:bg-red-900/30 dark:border-red-700 dark:text-red-200">
-                <p>{{ session('error') }}</p>
-            </div>
-        @endif
-
         {{-- MODAL AJOUT/MODIFICATION --}}
         <div id="userModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-xl p-6 max-h-[90vh] overflow-y-auto">
@@ -90,6 +84,17 @@
                             <p class="text-xs text-gray-500 mt-1" id="roleHelpCreate">Création : secrétaire ou chef uniquement. Communiquez e-mail et mot de passe à l’utilisateur.</p>
                             <p class="text-xs text-gray-500 mt-1 hidden" id="roleHelpEdit">Modification : secrétaire ou chef de service uniquement. L’administrateur est défini au déploiement (seeder).</p>
                         </div>
+                        <div id="serviceBlockStaff" class="space-y-1">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Service</label>
+                            <select name="service_code" id="serviceCodeSelect" required
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="" disabled @selected(! old('service_code'))>— Choisir un service —</option>
+                                @foreach (config('administration.services', []) as $code => $label)
+                                    <option value="{{ $code }}" @selected(old('service_code') === $code)>{{ $label }} ({{ $code }})</option>
+                                @endforeach
+                            </select>
+                            <p class="text-xs text-gray-500 dark:text-gray-400" id="serviceHelp">Obligatoire pour tout <strong>secrétaire</strong> et <strong>chef de service</strong>. L’administrateur n’a pas de service.</p>
+                        </div>
                         <div id="roleBlockAdmin" class="hidden">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Rôle</label>
                             <p class="mt-1 text-sm text-gray-600 dark:text-gray-300 rounded-md border border-gray-200 bg-gray-50 dark:border-gray-600 dark:bg-gray-900/50 px-3 py-2">
@@ -122,6 +127,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rôle</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -144,8 +150,16 @@
                                     @endif
                                 </span>
                             </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                                @if($user->role === 'admin')
+                                    —
+                                @else
+                                    <span class="font-mono text-xs">{{ $user->service_code }}</span>
+                                    <span class="block text-xs text-gray-500">{{ config('administration.services')[$user->service_code] ?? '—' }}</span>
+                                @endif
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                <button onclick="editUser({{ $user->id }}, '{{ $user->name }}', '{{ $user->email }}', '{{ $user->role }}')"
+                                <button type="button" onclick="editUser({{ $user->id }}, @js($user->name), @js($user->email), @js($user->role), @js($user->service_code))"
                                     class="text-yellow-600 hover:text-yellow-900 bg-yellow-100 hover:bg-yellow-200 px-3 py-1 rounded-lg transition">
                                     Modifier
                                 </button>
@@ -165,7 +179,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                            <td colspan="6" class="px-6 py-4 text-center text-gray-500">
                                 Aucun utilisateur trouvé
                             </td>
                         </tr>
@@ -203,20 +217,32 @@
 
         const roleHelpCreate = document.getElementById('roleHelpCreate');
         const roleHelpEdit = document.getElementById('roleHelpEdit');
+        const serviceBlockStaff = document.getElementById('serviceBlockStaff');
+        const serviceCodeSelect = document.getElementById('serviceCodeSelect');
 
         function setRoleUiMode(mode) {
             if (mode === 'admin') {
                 roleBlockStaff.classList.add('hidden');
                 roleBlockAdmin.classList.remove('hidden');
+                serviceBlockStaff?.classList.add('hidden');
                 roleSelect.removeAttribute('required');
                 roleSelect.disabled = true;
                 roleHiddenAdmin.disabled = false;
+                if (serviceCodeSelect) {
+                    serviceCodeSelect.removeAttribute('required');
+                    serviceCodeSelect.disabled = true;
+                }
             } else {
                 roleBlockStaff.classList.remove('hidden');
                 roleBlockAdmin.classList.add('hidden');
+                serviceBlockStaff?.classList.remove('hidden');
                 roleSelect.disabled = false;
                 roleSelect.setAttribute('required', 'required');
                 roleHiddenAdmin.disabled = true;
+                if (serviceCodeSelect) {
+                    serviceCodeSelect.disabled = false;
+                    serviceCodeSelect.setAttribute('required', 'required');
+                }
             }
         }
 
@@ -236,13 +262,16 @@
         });
 
         // Fonction pour éditer un utilisateur
-        window.editUser = function(id, name, email, role) {
+        window.editUser = function(id, name, email, role, serviceCode) {
             resetForm();
             if (role === 'admin') {
                 setRoleUiMode('admin');
             } else {
                 setRoleUiMode('staff');
                 roleSelect.value = role;
+            }
+            if (serviceCodeSelect && role !== 'admin') {
+                serviceCodeSelect.value = serviceCode || '';
             }
             roleHelpCreate.classList.add('hidden');
             roleHelpEdit.classList.remove('hidden');
@@ -281,6 +310,9 @@
         function resetForm() {
             userForm.reset();
             userId.value = '';
+            if (serviceCodeSelect) {
+                serviceCodeSelect.value = '';
+            }
             setRoleUiMode('staff');
             passwordInput.required = true;
             passwordConfirmation.required = true;
@@ -321,7 +353,7 @@
         }
 
         // Nettoyer les bordures rouges lors de la saisie
-        [nameInput, emailInput, passwordInput, passwordConfirmation, roleSelect, roleHiddenAdmin].forEach(input => {
+        [nameInput, emailInput, passwordInput, passwordConfirmation, roleSelect, roleHiddenAdmin, serviceCodeSelect].forEach(input => {
             if (input) {
                 input.addEventListener('input', () => {
                     input.classList.remove('border-red-500');

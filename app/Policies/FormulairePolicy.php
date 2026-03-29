@@ -14,17 +14,31 @@ class FormulairePolicy
 
     public function view(User $user, Formulaire $formulaire): bool
     {
-        return in_array($user->role, ['secretaire', 'chef_de_service'], true);
+        if (! in_array($user->role, ['secretaire', 'chef_de_service'], true)) {
+            return false;
+        }
+
+        return $user->sameServiceAsFormulaire($formulaire);
     }
 
     public function create(User $user): bool
     {
-        return in_array($user->role, ['secretaire', 'chef_de_service'], true);
+        if (! in_array($user->role, ['secretaire', 'chef_de_service'], true)) {
+            return false;
+        }
+
+        if ($user->role === 'chef_de_service' && $user->hasUnscopedServiceAccess()) {
+            return false;
+        }
+
+        return true;
     }
 
     public function update(User $user, Formulaire $formulaire): bool
     {
         return $user->role === 'secretaire'
+            && $user->sameServiceAsFormulaire($formulaire)
+            && $formulaire->isHeldByInitiatingService()
             && ($formulaire->createdBy?->role === 'secretaire')
             && $formulaire->isEditableBySecretaire();
     }
@@ -32,6 +46,8 @@ class FormulairePolicy
     public function delete(User $user, Formulaire $formulaire): bool
     {
         return $user->role === 'secretaire'
+            && $user->sameServiceAsFormulaire($formulaire)
+            && $formulaire->isHeldByInitiatingService()
             && ($formulaire->createdBy?->role === 'secretaire')
             && $formulaire->isEditableBySecretaire();
     }
@@ -39,23 +55,39 @@ class FormulairePolicy
     public function send(User $user, Formulaire $formulaire): bool
     {
         return $user->role === 'secretaire'
-            && ($formulaire->createdBy?->role === 'secretaire')
-            && $formulaire->canBeSentToChef();
+            && $user->sameServiceAsFormulaire($formulaire)
+            && $formulaire->canBeSentToChef()
+            && in_array($formulaire->createdBy?->role, ['secretaire', 'chef_de_service'], true);
     }
 
-    public function archive(User $user, Formulaire $formulaire): bool
+    public function transfer(User $user, Formulaire $formulaire): bool
     {
         return $user->role === 'secretaire'
-            && (
-                ($formulaire->createdBy?->role === 'chef_de_service')
-                || $formulaire->canBeArchivedBySecretaire()
-            );
+            && $user->sameServiceAsFormulaire($formulaire)
+            && $formulaire->canBeTransferredToOtherService();
+    }
+
+    /**
+     * Archivage : uniquement après décision chef (traité ou rejeté), pour tout dossier du service.
+     * (Plus d’archivage « immédiat » uniquement parce que le créateur est le chef.)
+     */
+    public function archive(User $user, Formulaire $formulaire): bool
+    {
+        if ($user->role !== 'secretaire' || ! $user->sameServiceAsFormulaire($formulaire)) {
+            return false;
+        }
+
+        return $formulaire->canBeArchivedBySecretaire();
     }
 
     /** Annoter / valider / rejeter : dossier pas encore clos côté chef. */
     public function agirCommeChef(User $user, Formulaire $formulaire): bool
     {
         if ($user->role !== 'chef_de_service') {
+            return false;
+        }
+
+        if (! $user->sameServiceAsFormulaire($formulaire)) {
             return false;
         }
 

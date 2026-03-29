@@ -16,22 +16,26 @@
                 </div>
             @endif
             <div class="grid grid-cols-1 gap-4">
-                <div class="grid grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Service Code</label>
-                        <input name="service_code" type="text" required maxlength="10" value="{{ old('service_code') }}"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Année</label>
-                        <input name="annee" type="number" required min="2000" max="2100" value="{{ old('annee') }}"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Numéro Ordre</label>
-                        <input name="numero_ordre" type="number" required min="1" value="{{ old('numero_ordre') }}"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
-                    </div>
+                @php
+                    $chefService = auth()->user()->service_code;
+                    $chefAnnee = (int) old('annee', date('Y'));
+                    $chefPeek = $chefService ? \App\Models\Formulaire::peekNextNumeroOrdre($chefService, $chefAnnee) : null;
+                @endphp
+                <div class="rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50/80 dark:bg-blue-950/30 p-3 text-sm">
+                    <p class="font-medium text-gray-800 dark:text-gray-100">Référence (service et numéro automatiques)</p>
+                    @if ($chefService)
+                        <p class="mt-1 text-gray-700 dark:text-gray-300">
+                            Service : <strong>{{ config('administration.services')[$chefService] ?? $chefService }}</strong>
+                        </p>
+                        <p class="mt-1 font-mono text-sm font-semibold text-blue-900 dark:text-blue-200">
+                            Prochain numéro indicatif : {{ $chefService }}/{{ $chefAnnee }}-{{ str_pad((string) $chefPeek, 4, '0', STR_PAD_LEFT) }}
+                        </p>
+                        <input type="hidden" name="annee" value="{{ $chefAnnee }}" />
+                    @else
+                        <p class="mt-1 text-amber-800 dark:text-amber-200 text-xs">
+                            Votre compte n’est pas rattaché à un service. Contactez l’administrateur — vous ne pourrez pas enregistrer de formulaire.
+                        </p>
+                    @endif
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Expéditeur</label>

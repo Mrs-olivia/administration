@@ -13,13 +13,14 @@ class UserManagementTest extends TestCase
     public function test_staff_user_cannot_be_promoted_to_admin_via_update(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $staff = User::factory()->create(['role' => 'secretaire']);
+        $staff = User::factory()->create(['role' => 'secretaire', 'service_code' => 'SVC1']);
 
         $this->actingAs($admin)
             ->put(route('admin.users.update', $staff->id), [
                 'name' => $staff->name,
                 'email' => $staff->email,
                 'role' => 'admin',
+                'service_code' => 'SVC1',
             ])
             ->assertSessionHasErrors('role');
 
@@ -37,7 +38,7 @@ class UserManagementTest extends TestCase
             ->from(route('admin.users.index'))
             ->delete(route('admin.users.destroy', $admin->id))
             ->assertRedirect(route('admin.users.index'))
-            ->assertSessionHas('error');
+            ->assertSessionHas('modal_error');
 
         $this->assertDatabaseHas('users', ['id' => $admin->id]);
     }

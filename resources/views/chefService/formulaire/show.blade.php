@@ -28,6 +28,19 @@
             <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
                 <div class="px-6 py-4 bg-gradient-to-r from-blue-950 to-blue-800">
                     <h3 class="text-2xl font-bold text-white">{{ $formulaire->reference }}</h3>
+                    <p class="text-blue-100 text-sm mt-1">
+                        <span class="text-blue-200/90">Service initiateur :</span>
+                        <span class="font-mono font-semibold">{{ $formulaire->initiatingServiceCode() }}</span>
+                        <span class="text-blue-200/80">— {{ $formulaire->initiatingServiceLabel() }}</span>
+                    </p>
+                    @if(filled($formulaire->origine_reference))
+                        <p class="text-blue-200 text-sm mt-2 border-t border-blue-700/50 pt-2">
+                            Dossier d’origine : <span class="font-mono font-semibold">{{ $formulaire->origine_reference }}</span>
+                            @if(filled($formulaire->origine_service_code))
+                                <span class="text-blue-100/80">({{ $formulaire->origineServiceLabel() }})</span>
+                            @endif
+                        </p>
+                    @endif
                     <p class="text-blue-100 mt-1">Créé le {{ $formulaire->created_at->format('d/m/Y à H:i') }}</p>
                 </div>
 
@@ -87,8 +100,8 @@
 
                     @if($formulaire->annotation_chef)
                         <div class="rounded-lg border border-gray-200 dark:border-gray-600 p-4 bg-gray-50 dark:bg-gray-900/50">
-                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Annotation / commentaire (ligne unique en base)</span>
-                            <p class="mt-2 text-gray-900 dark:text-white whitespace-pre-wrap">{{ $formulaire->annotation_chef }}</p>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Journal des annotations <span class="font-normal text-gray-500 dark:text-gray-400">([code service | date] — type — texte)</span></span>
+                            <p class="mt-2 text-gray-900 dark:text-white whitespace-pre-wrap font-mono text-sm">{{ $formulaire->annotation_chef }}</p>
                         </div>
                     @endif
                 </div>
@@ -99,11 +112,11 @@
 
                         <form action="{{ route('chefService.forms.annoter', $formulaire) }}" method="POST" class="space-y-2">
                             @csrf
-                            <label for="annotation_annoter" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Annoter (facultatif)</label>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Texte enregistré sur la même ligne dossier ; vous pouvez compléter avant de valider ou rejeter.</p>
+                            <label for="annotation_annoter" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Ajouter une annotation (facultatif)</label>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Chaque saisie est ajoutée au journal avec le préfixe <strong class="font-mono">[{{ auth()->user()?->service_code ?? $formulaire->service_code }} | date]</strong> pour distinguer les services.</p>
                             <textarea id="annotation_annoter" name="annotation" rows="3"
-                                placeholder="Instruction ou note de travail…"
-                                class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm">{{ old('annotation', $formulaire->annotation_chef) }}</textarea>
+                                placeholder="Nouvelle note (le journal complet reste affiché ci-dessus)…"
+                                class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm">{{ old('annotation') }}</textarea>
                             @error('annotation')
                                 <p class="text-sm text-red-600">{{ $message }}</p>
                             @enderror

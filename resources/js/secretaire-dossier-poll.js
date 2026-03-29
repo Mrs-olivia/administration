@@ -1,6 +1,11 @@
 /**
  * Rafraîchissement du statut / commentaire chef (SSOT : table formulaires) pour le secrétariat.
  */
+
+function openActionDeniedModal() {
+    window.dispatchEvent(new CustomEvent('open-modal', { detail: 'action-denied' }));
+}
+
 document.addEventListener('alpine:init', () => {
     const badgeBase = 'inline-flex px-2.5 py-0.5 rounded text-xs font-medium ';
 
@@ -53,6 +58,10 @@ document.addEventListener('alpine:init', () => {
                     },
                     credentials: 'same-origin',
                 });
+                if (r.status === 403) {
+                    openActionDeniedModal();
+                    return;
+                }
                 if (!r.ok) {
                     return;
                 }
@@ -106,6 +115,10 @@ document.addEventListener('alpine:init', () => {
                     },
                     credentials: 'same-origin',
                 });
+                if (r.status === 403) {
+                    openActionDeniedModal();
+                    return;
+                }
                 if (!r.ok) {
                     return;
                 }

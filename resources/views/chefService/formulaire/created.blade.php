@@ -17,12 +17,6 @@
         </script>
     @endif
 
-    @if (session('error'))
-        <div class="flex p-4 mb-4 text-sm rounded-lg bg-red-100 text-red-800 border border-red-400">
-            {{ session('error') }}
-        </div>
-    @endif
-
     <section id="pageWrapper" class="bg-gray-50 dark:bg-gray-900 p-3 sm:p-5 transition-all duration-300">
         <div class="mx-auto max-w-screen-xl px-4 lg:px-12">
             <div class="bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-hidden">

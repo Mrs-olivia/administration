@@ -18,6 +18,12 @@ class WorkflowLogController extends Controller
             ->with(['formulaire'])
             ->latest();
 
+        if (auth()->user()->service_code) {
+            $query->whereHas('formulaire', function ($q): void {
+                $q->where('service_code', auth()->user()->service_code);
+            });
+        }
+
         if ($expediteur !== '') {
             $operator = DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
             $query->whereHas('formulaire', function ($q) use ($expediteur, $operator): void {
@@ -30,4 +36,3 @@ class WorkflowLogController extends Controller
         return view('secretaire.workflow_logs.index', compact('logs', 'expediteur'));
     }
 }
-

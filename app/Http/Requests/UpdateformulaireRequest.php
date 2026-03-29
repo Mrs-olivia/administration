@@ -22,16 +22,16 @@ class UpdateformulaireRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'service_code' => ['sometimes','required','string','max:10'],
-            'annee' => ['sometimes','required','integer','min:2000','max:2100'],
-            'numero_ordre' => ['sometimes','required','integer','min:1'],
-            'expediteur' => ['sometimes','required','string','max:255'],
-            'objet' => ['sometimes','required','string','max:1000'],
-            'type_document' => ['sometimes','required','string','max:255'],
+            'service_code' => ['prohibited'],
+            'annee' => ['prohibited'],
+            'numero_ordre' => ['prohibited'],
+            'expediteur' => ['sometimes', 'required', 'string', 'max:255'],
+            'objet' => ['sometimes', 'required', 'string', 'max:1000'],
+            'type_document' => ['sometimes', 'required', 'string', 'max:255'],
             'autre_type_document' => ['nullable', 'string', 'max:255'],
-            'date_reception' => ['nullable','date'],
-            'date_echeance' => ['nullable','date'],
-            'fichier' => ['nullable','file','max:5120'],
+            'date_reception' => ['nullable', 'date'],
+            'date_echeance' => ['nullable', 'date'],
+            'fichier' => ['nullable', 'file', 'max:5120'],
             'status' => ['prohibited'],
         ];
     }

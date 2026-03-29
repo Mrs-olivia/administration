@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
@@ -26,20 +27,24 @@ class UserController extends Controller
         return view('admin.users.create');
     }
 
-    //Voir un utilisateur
+    // Voir un utilisateur
     public function show($id)
     {
         $user = User::findOrFail($id);
+
         return view('admin.users.show', compact('user'));
     }
 
     public function store(Request $request)
     {
+        $serviceCodes = array_keys(config('administration.services', []));
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::defaults()],
             'role' => ['required', 'in:secretaire,chef_de_service'],
+            'service_code' => ['required', 'string', 'max:10', Rule::in($serviceCodes)],
         ]);
 
         $validated['password'] = Hash::make($validated['password']);
@@ -55,7 +60,7 @@ class UserController extends Controller
             ->with('created_email', $validated['email']);
     }
 
-    //Mettre à jour un utilisateur
+    // Mettre à jour un utilisateur
     public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);
@@ -64,12 +69,20 @@ class UserController extends Controller
             ? ['required', 'in:admin']
             : ['required', 'in:secretaire,chef_de_service'];
 
-        $validated = $request->validate([
-            'name'  => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $id,
-            'role'  => $roleRule,
+        $serviceCodes = array_keys(config('administration.services', []));
+
+        $rules = [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,'.$id,
+            'role' => $roleRule,
             'password' => ['nullable', 'confirmed', Password::defaults()],
-        ]);
+        ];
+
+        if ($user->role !== 'admin') {
+            $rules['service_code'] = ['required', 'string', 'max:10', Rule::in($serviceCodes)];
+        }
+
+        $validated = $request->validate($rules);
 
         if ($request->filled('password')) {
             $validated['password'] = Hash::make($validated['password']);
@@ -77,18 +90,22 @@ class UserController extends Controller
             unset($validated['password']);
         }
 
+        if ($user->role === 'admin') {
+            unset($validated['service_code']);
+        }
+
         $user->update($validated);
 
         return redirect()->back()->with('success', 'Utilisateur mis à jour');
     }
 
-    //Supprimer un utilisateur
+    // Supprimer un utilisateur
     public function destroy($id)
     {
         $user = User::findOrFail($id);
 
         if ($user->role === 'admin') {
-            return redirect()->back()->with('error', 'Le compte administrateur initial ne peut pas être supprimé.');
+            return redirect()->back()->with('modal_error', true);
         }
 
         $user->delete();

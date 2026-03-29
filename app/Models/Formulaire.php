@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class Formulaire extends Model
 {
@@ -24,6 +27,11 @@ class Formulaire extends Model
     protected $fillable = [
         'created_by_user_id',
         'service_code',
+        'origine_service_code',
+        'origine_reference',
+        'transfers_count',
+        'first_transferred_at',
+        'last_transferred_at',
         'annee',
         'numero_ordre',
         'expediteur',
@@ -35,6 +43,8 @@ class Formulaire extends Model
         'status',
         'note',
         'annotation_chef',
+        'chef_annotations_log',
+        'last_decision_chef_service_code',
         'sent_to_chef_at',
     ];
 
@@ -42,7 +52,11 @@ class Formulaire extends Model
         'date_reception' => 'date',
         'date_echeance' => 'date',
         'status' => 'integer',
+        'transfers_count' => 'integer',
         'sent_to_chef_at' => 'datetime',
+        'first_transferred_at' => 'datetime',
+        'last_transferred_at' => 'datetime',
+        'chef_annotations_log' => 'array',
     ];
 
     public function createdBy(): BelongsTo
@@ -53,6 +67,152 @@ class Formulaire extends Model
     public function getReferenceAttribute(): string
     {
         return "{$this->service_code}/{$this->annee}-".str_pad((string) $this->numero_ordre, 4, '0', STR_PAD_LEFT);
+    }
+
+    public function serviceLabel(): string
+    {
+        $services = config('administration.services', []);
+
+        return $services[$this->service_code] ?? $this->service_code;
+    }
+
+    public function origineServiceLabel(): ?string
+    {
+        if (blank($this->origine_service_code)) {
+            return null;
+        }
+
+        $services = config('administration.services', []);
+
+        return $services[$this->origine_service_code] ?? $this->origine_service_code;
+    }
+
+    /**
+     * Service qui détient le droit de clôture (archivage) et reste identifiable sur tout le parcours.
+     * Dès le premier transfert, origine_service_code pointe vers ce service (référence d’origine conservée).
+     *
+     * Important : utiliser filled() et pas seulement ?? car une chaîne vide en base ferait croire
+     * à un « relais » (initiateur vide) et bloquerait tout transfert.
+     */
+    public function initiatingServiceCode(): string
+    {
+        $fromOrigine = trim((string) ($this->origine_service_code ?? ''));
+        if ($fromOrigine !== '') {
+            return $fromOrigine;
+        }
+
+        return trim((string) $this->service_code);
+    }
+
+    public function initiatingServiceLabel(): string
+    {
+        $code = $this->initiatingServiceCode();
+        $services = config('administration.services', []);
+
+        return $services[$code] ?? $code;
+    }
+
+    /** Le dossier est physiquement chez le service initiateur (pas en relais). */
+    public function isHeldByInitiatingService(): bool
+    {
+        return trim((string) $this->service_code) === $this->initiatingServiceCode();
+    }
+
+    /** Dossier pris en charge par un service relais (transmis depuis l’initiateur ou un tiers). */
+    public function isRelayServiceHold(): bool
+    {
+        return ! $this->isHeldByInitiatingService();
+    }
+
+    /**
+     * Prochain numéro d’ordre (transaction + verrou sur une ligne de séquence).
+     * PostgreSQL n’accepte pas MAX(...) avec FOR UPDATE ; on utilise une table dédiée.
+     */
+    public static function nextNumeroOrdre(string $serviceCode, int $annee): int
+    {
+        return (int) DB::transaction(function () use ($serviceCode, $annee): int {
+            $lastError = null;
+            for ($i = 0; $i < 12; $i++) {
+                try {
+                    return self::allocateNextUsingSequenceTable($serviceCode, $annee);
+                } catch (QueryException $e) {
+                    if (! self::isUniqueConstraintViolation($e)) {
+                        throw $e;
+                    }
+                    $lastError = $e;
+                }
+            }
+
+            throw $lastError ?? new \RuntimeException('Impossible d’attribuer un numéro d’ordre.');
+        });
+    }
+
+    /**
+     * @throws QueryException en cas de conflit d’insertion unique (retry en amont).
+     */
+    private static function allocateNextUsingSequenceTable(string $serviceCode, int $annee): int
+    {
+        $seq = DB::table('formulaire_reference_sequences')
+            ->where('service_code', $serviceCode)
+            ->where('annee', $annee)
+            ->lockForUpdate()
+            ->first();
+
+        if ($seq === null) {
+            $max = (int) self::query()
+                ->where('service_code', $serviceCode)
+                ->where('annee', $annee)
+                ->max('numero_ordre');
+            $next = $max + 1;
+            DB::table('formulaire_reference_sequences')->insert([
+                'service_code' => $serviceCode,
+                'annee' => $annee,
+                'last_num' => $next,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return $next;
+        }
+
+        $next = (int) $seq->last_num + 1;
+        DB::table('formulaire_reference_sequences')
+            ->where('id', $seq->id)
+            ->update(['last_num' => $next, 'updated_at' => now()]);
+
+        return $next;
+    }
+
+    private static function isUniqueConstraintViolation(QueryException $e): bool
+    {
+        $info = $e->errorInfo;
+        if (($info[0] ?? '') === '23505') {
+            return true;
+        }
+        if (($info[1] ?? null) === 1062) {
+            return true;
+        }
+        if (($info[1] ?? null) === 19) {
+            return true;
+        }
+
+        return str_contains(strtolower($e->getMessage()), 'unique constraint');
+    }
+
+    /** Aperçu sans verrou — peut différer légèrement du numéro réel sous forte concurrence. */
+    public static function peekNextNumeroOrdre(string $serviceCode, int $annee): int
+    {
+        $maxForm = (int) self::query()
+            ->where('service_code', $serviceCode)
+            ->where('annee', $annee)
+            ->max('numero_ordre');
+
+        $lastSeq = (int) (DB::table('formulaire_reference_sequences')
+            ->where('service_code', $serviceCode)
+            ->where('annee', $annee)
+            ->value('last_num') ?? 0);
+
+        return max($maxForm, $lastSeq) + 1;
     }
 
     public function statusLabel(): string
@@ -73,9 +233,36 @@ class Formulaire extends Model
         return $this->status === self::STATUS_EN_ATTENTE;
     }
 
+    /**
+     * Archivage réservé au service initiateur, après une décision chef rendue **sur ce même service**
+     * (après un retour de circuit, une nouvelle validation / rejet du chef initial est requise).
+     */
     public function canBeArchivedBySecretaire(): bool
     {
-        return in_array($this->status, [self::STATUS_TRAITE, self::STATUS_REJETE], true);
+        if (! $this->isHeldByInitiatingService()) {
+            return false;
+        }
+
+        $status = (int) $this->status;
+        if (! in_array($status, [self::STATUS_TRAITE, self::STATUS_REJETE], true)) {
+            return false;
+        }
+
+        $last = trim((string) ($this->last_decision_chef_service_code ?? ''));
+
+        return $last !== '' && $last === $this->initiatingServiceCode();
+    }
+
+    /** Texte d’aide lorsque le bouton Archiver est désactivé (secrétariat initiateur). */
+    public function archiveDisabledHintForSecretaire(): string
+    {
+        if ($this->isHeldByInitiatingService()
+            && in_array((int) $this->status, [self::STATUS_TRAITE, self::STATUS_REJETE], true)
+            && ! $this->canBeArchivedBySecretaire()) {
+            return 'Une nouvelle décision du chef du service initiateur est requise avant clôture (dossier revenu d’un circuit ou décision enregistrée ailleurs).';
+        }
+
+        return 'Archivage réservé au service initiateur, après décision du chef (traité ou rejeté), y compris une ultime décision après retour du dossier.';
     }
 
     public function canBeSentToChef(): bool
@@ -83,10 +270,105 @@ class Formulaire extends Model
         return $this->status === self::STATUS_EN_ATTENTE;
     }
 
+    public function canBeTransferredToOtherService(): bool
+    {
+        $status = (int) $this->status;
+
+        if (! in_array($status, [self::STATUS_TRAITE, self::STATUS_REJETE], true)) {
+            return false;
+        }
+
+        // Rejet lors de la validation interne au service d’origine, sans circulation : pas de transfert sortant.
+        if ($status === self::STATUS_REJETE
+            && $this->isHeldByInitiatingService()
+            && ((int) $this->transfers_count) === 0) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Cible autorisée pour un transfert : initiateur → tout autre service ;
+     * service relais (2e, 3e…) → tout autre service sauf soi (renvoi à l’origine ou saut vers un autre relais).
+     */
+    public function isAllowedTransferTarget(string $targetServiceCode): bool
+    {
+        $target = trim($targetServiceCode);
+        $here = trim((string) $this->service_code);
+
+        if ($target === '' || $target === $here) {
+            return false;
+        }
+
+        if (! $this->canBeTransferredToOtherService()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function hasTransferTrace(): bool
+    {
+        return ((int) $this->transfers_count) > 0;
+    }
+
     /** Texte chef déjà présent (annotation ou décision) — pour règle « commentaire obligatoire si vide ». */
     public function hasChefAnnotation(): bool
     {
-        return filled(trim((string) $this->annotation_chef));
+        if (filled(trim((string) $this->annotation_chef))) {
+            return true;
+        }
+
+        $log = $this->chef_annotations_log;
+
+        return is_array($log) && $log !== [];
+    }
+
+    /**
+     * Ajoute une entrée au journal d’annotations et régénère le champ affiché (nomenclature [CODE | date] …).
+     *
+     * @param  'note'|'validation'|'rejet'  $kind
+     */
+    public function appendChefAnnotationEntry(string $serviceCode, int $userId, string $kind, string $body): void
+    {
+        $log = $this->chef_annotations_log ?? [];
+        $log[] = [
+            'service_code' => $serviceCode,
+            'user_id' => $userId,
+            'kind' => $kind,
+            'body' => $body,
+            'created_at' => now()->toIso8601String(),
+        ];
+        $this->chef_annotations_log = $log;
+        $this->rebuildAnnotationChefDisplay();
+    }
+
+    public function rebuildAnnotationChefDisplay(): void
+    {
+        $log = $this->chef_annotations_log ?? [];
+        if ($log === []) {
+            $this->annotation_chef = null;
+
+            return;
+        }
+
+        $blocks = [];
+        foreach ($log as $entry) {
+            $code = $entry['service_code'] ?? '';
+            $at = isset($entry['created_at'])
+                ? Carbon::parse($entry['created_at'])->format('d/m/Y H:i')
+                : '';
+            $kind = $entry['kind'] ?? 'note';
+            $label = match ($kind) {
+                'validation' => 'Validation',
+                'rejet' => 'Rejet',
+                default => 'Annotation',
+            };
+            $body = trim((string) ($entry['body'] ?? ''));
+            $blocks[] = '['.$code.' | '.$at.'] '.$label.' — '.$body;
+        }
+        $this->annotation_chef = implode("\n\n", $blocks);
     }
 
     /** Variante UI pour badges (polling / Alpine). */
@@ -108,13 +390,17 @@ class Formulaire extends Model
         return [
             'id' => $this->id,
             'reference' => $this->reference,
+            'origine_reference' => $this->origine_reference,
+            'transfers_count' => (int) $this->transfers_count,
+            'last_transferred_at' => $this->last_transferred_at?->toIso8601String(),
             'status' => $this->status,
             'status_label' => $this->statusLabel(),
             'status_badge_variant' => $this->statusBadgeVariant(),
             'annotation_chef' => $this->annotation_chef,
+            'initiating_service_code' => $this->initiatingServiceCode(),
+            'last_decision_chef_service_code' => $this->last_decision_chef_service_code,
             'sent_to_chef_at' => $this->sent_to_chef_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
 }
-
