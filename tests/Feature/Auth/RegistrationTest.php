@@ -38,8 +38,8 @@ class RegistrationTest extends TestCase
             ->post(route('admin.users.store'), [
                 'name' => 'Nouveau Secrétaire',
                 'email' => 'nouveau.secretaire@example.com',
-                'password' => 'password',
-                'password_confirmation' => 'password',
+                'password' => 'UniquePass123!',
+                'password_confirmation' => 'UniquePass123!',
                 'role' => 'secretaire',
                 'service_code' => 'SVC1',
             ])

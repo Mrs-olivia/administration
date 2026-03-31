@@ -44,10 +44,19 @@ class UserController extends Controller
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::defaults()],
             'role' => ['required', 'in:secretaire,chef_de_service'],
-            'service_code' => ['required', 'string', 'max:10', Rule::in($serviceCodes)],
+            'service_code' => [
+                Rule::requiredIf($request->input('role') === 'chef_de_service'),
+                'nullable',
+                'string',
+                'max:10',
+                Rule::in($serviceCodes),
+            ],
         ]);
 
         $validated['password'] = Hash::make($validated['password']);
+        if (($validated['service_code'] ?? null) === '') {
+            $validated['service_code'] = null;
+        }
 
         $newUser = User::create($validated);
         $newUser->syncRoles([$newUser->role]);
@@ -71,20 +80,32 @@ class UserController extends Controller
 
         $serviceCodes = array_keys(config('administration.services', []));
 
-        $rules = [
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,'.$id,
             'role' => $roleRule,
             'password' => ['nullable', 'confirmed', Password::defaults()],
-        ];
+            'service_code' => [
+                Rule::requiredIf($request->input('role') === 'chef_de_service'),
+                'nullable',
+                'string',
+                'max:10',
+                Rule::in($serviceCodes),
+            ],
+        ]);
 
-        if ($user->role !== 'admin') {
+        if ($request->filled('password')) {
             $rules['service_code'] = ['required', 'string', 'max:10', Rule::in($serviceCodes)];
         }
 
         $validated = $request->validate($rules);
 
         if ($request->filled('password')) {
+            if (User::isPasswordUsedByAnotherUser($validated['password'], (int) $user->id)) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['password' => 'Ce mot de passe est déjà utilisé par un autre utilisateur. Choisissez-en un autre.']);
+            }
             $validated['password'] = Hash::make($validated['password']);
         } else {
             unset($validated['password']);
@@ -92,6 +113,8 @@ class UserController extends Controller
 
         if ($user->role === 'admin') {
             unset($validated['service_code']);
+        } elseif (($validated['service_code'] ?? null) === '') {
+            $validated['service_code'] = null;
         }
 
         $user->update($validated);
@@ -105,7 +128,7 @@ class UserController extends Controller
         $user = User::findOrFail($id);
 
         if ($user->role === 'admin') {
-            return redirect()->back()->with('modal_error', true);
+            return redirect()->back()->with('error', 'Le compte administrateur initial ne peut pas être supprimé.');
         }
 
         $user->delete();
