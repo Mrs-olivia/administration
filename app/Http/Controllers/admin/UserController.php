@@ -53,6 +53,12 @@ class UserController extends Controller
             ],
         ]);
 
+        if (User::isPasswordUsedByAnotherUser($validated['password'])) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['password' => 'Ce mot de passe est déjà utilisé par un autre utilisateur. Choisissez-en un autre.']);
+        }
+
         $validated['password'] = Hash::make($validated['password']);
         if (($validated['service_code'] ?? null) === '') {
             $validated['service_code'] = null;

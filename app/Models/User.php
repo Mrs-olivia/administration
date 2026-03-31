@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -105,6 +106,26 @@ class User extends Authenticatable
         return static::role('secretaire')
             ->where('service_code', $serviceCode)
             ->get();
+    }
+
+    /**
+     * Vérifie si un mot de passe en clair est déjà utilisé par un autre utilisateur.
+     */
+    public static function isPasswordUsedByAnotherUser(string $plainPassword, ?int $exceptUserId = null): bool
+    {
+        $query = static::query()->select(['id', 'password']);
+
+        if ($exceptUserId !== null) {
+            $query->where('id', '!=', $exceptUserId);
+        }
+
+        foreach ($query->cursor() as $user) {
+            if (is_string($user->password) && Hash::check($plainPassword, $user->password)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected static function booted(): void

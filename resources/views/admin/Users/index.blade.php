@@ -78,8 +78,8 @@
                             <select name="role" id="roleSelect" required
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                 <option value="">-- Choisir un rôle --</option>
-                                <option value="secretaire">Secrétaire</option>
-                                <option value="chef_de_service">Chef de service</option>
+                                <option value="secretaire" @selected(old('role') === 'secretaire')>Secrétaire</option>
+                                <option value="chef_de_service" @selected(old('role') === 'chef_de_service')>Chef de service</option>
                             </select>
                             <p class="text-xs text-gray-500 mt-1" id="roleHelpCreate">Création : secrétaire ou chef uniquement. Communiquez e-mail et mot de passe à l’utilisateur.</p>
                             <p class="text-xs text-gray-500 mt-1 hidden" id="roleHelpEdit">Modification : secrétaire ou chef de service uniquement. L’administrateur est défini au déploiement (seeder).</p>
@@ -219,6 +219,7 @@
         const roleHelpEdit = document.getElementById('roleHelpEdit');
         const serviceBlockStaff = document.getElementById('serviceBlockStaff');
         const serviceCodeSelect = document.getElementById('serviceCodeSelect');
+        const hasServerErrors = @json($errors->any());
 
         function setRoleUiMode(mode) {
             if (mode === 'admin') {
@@ -362,5 +363,21 @@
                 });
             }
         });
+
+        // Si la validation serveur échoue (ex: mot de passe déjà utilisé),
+        // on rouvre la modale de création pour afficher immédiatement l'alerte rouge.
+        if (hasServerErrors) {
+            setRoleUiMode('staff');
+            roleHelpCreate.classList.remove('hidden');
+            roleHelpEdit.classList.add('hidden');
+            modalTitle.textContent = 'Ajouter un utilisateur';
+            formMethod.value = 'POST';
+            userForm.action = "{{ route('admin.users.store') }}";
+            passwordInput.required = true;
+            passwordConfirmation.required = true;
+            passwordHelp.textContent = 'Règles Laravel (min. 8 caractères, etc.) — requis';
+            userModal.classList.remove('hidden');
+            userModal.classList.add('flex');
+        }
     </script>
 </x-app-layout>
